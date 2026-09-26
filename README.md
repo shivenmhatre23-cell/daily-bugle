@@ -114,7 +114,7 @@ During municipal emergencies, social media and message forwards overflow with co
 - Floating animated **Breaking News Ticker** and toast alerts.
 - In-browser synthesized Web Audio teletype chime on verified threat detection.
 
-### 6. 📰 J. Jonah Jameson Sensationalist Mode
+### 6. 📰 J. Jonah Jameson Sensationalist Mode (Crazy Mode)
 - An educational media literacy toggle that swaps objective, explainable intelligence with dramatic tabloid headlines (*"SPIDER-MAN MENACE!"*), visually contrasting verified facts with sensationalism.
 
 ---
