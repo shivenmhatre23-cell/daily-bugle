@@ -2,7 +2,7 @@
 
 ## ⁉️ Problem Statement
 
-**Daily Bugle News Engine:  **
+**Daily Bugle News Engine:**
 A platform for citizens to report suspicious activity or incidents, where the real challenge is
 separating credible signal from noise, rumor, and outright fake reports — much like the Bugle
 separating real heroics from tabloid nonsense. What eventually gets treated as "verified" shapes
