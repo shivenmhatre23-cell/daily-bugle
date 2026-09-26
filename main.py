@@ -39,10 +39,18 @@ app = FastAPI(title="The Daily Bugle News & Trust Engine")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
-UPLOADS_DIR = os.path.join(STATIC_DIR, "uploads")
+is_serverless = bool(os.getenv("AWS_LAMBDA_FUNCTION_NAME") or os.getenv("NETLIFY"))
+UPLOADS_DIR = "/tmp/uploads" if is_serverless else os.path.join(STATIC_DIR, "uploads")
 
-os.makedirs(UPLOADS_DIR, exist_ok=True)
-os.makedirs(TEMPLATES_DIR, exist_ok=True)
+try:
+    os.makedirs(UPLOADS_DIR, exist_ok=True)
+except Exception:
+    pass
+
+try:
+    os.makedirs(TEMPLATES_DIR, exist_ok=True)
+except Exception:
+    pass
 
 # Initialize database
 database.init_db()

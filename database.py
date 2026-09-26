@@ -11,7 +11,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bugle.db")
+def get_db_path() -> str:
+    """Returns path to SQLite database. Uses /tmp/bugle.db on serverless/read-only systems."""
+    if os.getenv("AWS_LAMBDA_FUNCTION_NAME") or os.getenv("NETLIFY"):
+        tmp_db = "/tmp/bugle.db"
+        if not os.path.exists(tmp_db):
+            src_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bugle.db")
+            if os.path.exists(src_db):
+                try:
+                    import shutil
+                    shutil.copy2(src_db, tmp_db)
+                except Exception as e:
+                    print(f"[DB Notice] Could not copy initial db to /tmp: {e}")
+        return tmp_db
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), "bugle.db")
+
+DB_PATH = get_db_path()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = (
@@ -22,155 +37,158 @@ SUPABASE_KEY = (
 )
 SUPABASE_STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "incident-evidence")
 
-conn = sqlite3.connect("bugle.db")
-cursor = conn.cursor()
-now = datetime.now()
+def seed_batch_incidents_6_to_9(conn=None):
+    close_at_end = False
+    if conn is None:
+        conn = get_connection()
+        close_at_end = True
+    cursor = conn.cursor()
+    now = datetime.now()
 
-incidents_to_add = [
-    (
-        6,
-        "Chemical Gas Cylinder Leak at Mancheswar Industrial Estate",
-        "Suspected chlorine gas leak at logistics warehouse; 200m safety perimeter initiated.",
-        "Fire response teams and HAZMAT containment specialists responded to Mancheswar Industrial Estate after workers reported pungent choking fumes. Two individuals shifted to Capital Hospital.",
-        "",
-        "Civic",
-        20.3124,
-        85.8612,
-        1,
-        88,
-        "VERIFIED",
-        json.dumps([
-            {"label": "Corroborated by 2 eyewitnesses", "value": "+18"},
-            {"label": "Independent subnet diversity", "value": "+14"},
-            {"label": "HAZMAT Priority Override", "value": "+15"},
-        ]),
-        2,
-        2,
-        "DISPATCHED",
-        "FIRE",
-        "Hazmat fire tender deployed with chemical protective equipment.",
-        now.isoformat(),
-        "CONFIRMED",
-        "ACTIVE",
-        "FIRE",
-        0,
-        1,
-        0,
-        now.isoformat(),
-        now.isoformat(),
-    ),
-    (
-        7,
-        "Multi-Vehicle Pileup on Khandagiri Flyover Ramp",
-        "Three-car collision with overturned pickup blocking inbound NH-16 lanes.",
-        "Early morning multi-vehicle collision involving two passenger cars and a pickup truck paralyzed inbound traffic along Khandagiri ramp. Paramedics treating minor injuries on-site.",
-        "",
-        "Obstruction",
-        20.2592,
-        85.7891,
-        1,
-        92,
-        "VERIFIED",
-        json.dumps([
-            {"label": "3 field corroborations logged", "value": "+22"},
-            {"label": "Matching NH-16 GPS telemetry", "value": "+16"},
-            {"label": "Emergency responders on-scene", "value": "+20"},
-        ]),
-        3,
-        2,
-        "ON_SCENE",
-        "AMBULANCE",
-        "Ambulance unit 108 and highway recovery crane active on-scene.",
-        now.isoformat(),
-        "SUSPECTED",
-        "CONTAINED",
-        "AMBULANCE",
-        0,
-        0,
-        0,
-        now.isoformat(),
-        now.isoformat(),
-    ),
-    (
-        8,
-        "High-Voltage Wire Snap & Street Flooding at Nayapalli",
-        "Overhead 11kV power distribution line dangling in waterlogged street.",
-        "Urgent neighborhood alert regarding high-tension cable snap in rain-accumulated standing water near Behera Sahi. Grid isolation requested.",
-        "",
-        "Civic",
-        20.2985,
-        85.8123,
-        1,
-        68,
-        "COMMUNITY",
-        json.dumps([
-            {"label": "Neighborhood alert cluster", "value": "+18"},
-            {"label": "Awaiting grid substation confirmation", "value": "-8"},
-        ]),
-        2,
-        2,
-        "PENDING",
-        "CIVIC",
-        "Pending power grid substation shutdown verification.",
-        None,
-        "NONE",
-        "ACTIVE",
-        "NONE",
-        0,
-        1,
-        0,
-        now.isoformat(),
-        now.isoformat(),
-    ),
-    (
-        9,
-        "Viral Hoax: Fictitious Kuakhai Barrage Breach Rumor",
-        "Social media voice note claiming embankment collapse debunked by river telemetry.",
-        "Circulating claim alleging structural breach at Kuakhai barrage investigated and debunked. Automated water gauge sensors confirm standard discharge levels.",
-        "",
-        "Disaster",
-        20.4625,
-        85.8828,
-        1,
-        12,
-        "BUSTED",
-        json.dumps([
-            {"label": "Sensor telemetry contradicts claim", "value": "-35"},
-            {"label": "Zero emergency call corroboration", "value": "-20"},
-        ]),
-        1,
-        1,
-        "RESOLVED",
-        "CIVIC",
-        "Debunked rumor. No responders committed.",
-        now.isoformat(),
-        "NONE",
-        "CLEARED",
-        "NONE",
-        0,
-        0,
-        0,
-        now.isoformat(),
-        now.isoformat(),
-    ),
-]
-
-cursor.executemany(
-    """
-    INSERT OR REPLACE INTO incidents (
-        id, title, summary, full_article, primary_image, category, latitude, longitude,
-        is_spatial, confidence_score, status, explainability_json, report_count, source_diversity,
-        dispatch_status, dispatched_agency, dispatch_notes, dispatched_at,
-        injuries, threat_state, responders_present, dispute_count, is_lethal_priority, is_regional_cluster,
-        created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-""",
-    incidents_to_add,
-)
-
-conn.commit()
-conn.close()
-print("Successfully added new realistic incidents.")
+    incidents_to_add = [
+        (
+            6,
+            "Chemical Gas Cylinder Leak at Mancheswar Industrial Estate",
+            "Suspected chlorine gas leak at logistics warehouse; 200m safety perimeter initiated.",
+            "Fire response teams and HAZMAT containment specialists responded to Mancheswar Industrial Estate after workers reported pungent choking fumes. Two individuals shifted to Capital Hospital.",
+            "",
+            "Civic",
+            20.3124,
+            85.8612,
+            1,
+            88,
+            "VERIFIED",
+            json.dumps([
+                {"label": "Corroborated by 2 eyewitnesses", "value": "+18"},
+                {"label": "Independent subnet diversity", "value": "+14"},
+                {"label": "HAZMAT Priority Override", "value": "+15"},
+            ]),
+            2,
+            2,
+            "DISPATCHED",
+            "FIRE",
+            "Hazmat fire tender deployed with chemical protective equipment.",
+            now.isoformat(),
+            "CONFIRMED",
+            "ACTIVE",
+            "FIRE",
+            0,
+            1,
+            0,
+            now.isoformat(),
+            now.isoformat(),
+        ),
+        (
+            7,
+            "Multi-Vehicle Pileup on Khandagiri Flyover Ramp",
+            "Three-car collision with overturned pickup blocking inbound NH-16 lanes.",
+            "Early morning multi-vehicle collision involving two passenger cars and a pickup truck paralyzed inbound traffic along Khandagiri ramp. Paramedics treating minor injuries on-site.",
+            "",
+            "Obstruction",
+            20.2592,
+            85.7891,
+            1,
+            92,
+            "VERIFIED",
+            json.dumps([
+                {"label": "3 field corroborations logged", "value": "+22"},
+                {"label": "Matching NH-16 GPS telemetry", "value": "+16"},
+                {"label": "Emergency responders on-scene", "value": "+20"},
+            ]),
+            3,
+            2,
+            "ON_SCENE",
+            "AMBULANCE",
+            "Ambulance unit 108 and highway recovery crane active on-scene.",
+            now.isoformat(),
+            "SUSPECTED",
+            "CONTAINED",
+            "AMBULANCE",
+            0,
+            0,
+            0,
+            now.isoformat(),
+            now.isoformat(),
+        ),
+        (
+            8,
+            "High-Voltage Wire Snap & Street Flooding at Nayapalli",
+            "Overhead 11kV power distribution line dangling in waterlogged street.",
+            "Urgent neighborhood alert regarding high-tension cable snap in rain-accumulated standing water near Behera Sahi. Grid isolation requested.",
+            "",
+            "Civic",
+            20.2985,
+            85.8123,
+            1,
+            68,
+            "COMMUNITY",
+            json.dumps([
+                {"label": "Neighborhood alert cluster", "value": "+18"},
+                {"label": "Awaiting grid substation confirmation", "value": "-8"},
+            ]),
+            2,
+            2,
+            "PENDING",
+            "CIVIC",
+            "Pending power grid substation shutdown verification.",
+            None,
+            "NONE",
+            "ACTIVE",
+            "NONE",
+            0,
+            1,
+            0,
+            now.isoformat(),
+            now.isoformat(),
+        ),
+        (
+            9,
+            "Viral Hoax: Fictitious Kuakhai Barrage Breach Rumor",
+            "Social media voice note claiming embankment collapse debunked by river telemetry.",
+            "Circulating claim alleging structural breach at Kuakhai barrage investigated and debunked. Automated water gauge sensors confirm standard discharge levels.",
+            "",
+            "Disaster",
+            20.4625,
+            85.8828,
+            1,
+            12,
+            "BUSTED",
+            json.dumps([
+                {"label": "Sensor telemetry contradicts claim", "value": "-35"},
+                {"label": "Zero emergency call corroboration", "value": "-20"},
+            ]),
+            1,
+            1,
+            "RESOLVED",
+            "CIVIC",
+            "Debunked rumor. No responders committed.",
+            now.isoformat(),
+            "NONE",
+            "CLEARED",
+            "NONE",
+            0,
+            0,
+            0,
+            now.isoformat(),
+            now.isoformat(),
+        ),
+    ]
+    
+    cursor.executemany(
+        """
+        INSERT OR REPLACE INTO incidents (
+            id, title, summary, full_article, primary_image, category, latitude, longitude,
+            is_spatial, confidence_score, status, explainability_json, report_count, source_diversity,
+            dispatch_status, dispatched_agency, dispatch_notes, dispatched_at,
+            injuries, threat_state, responders_present, dispute_count, is_lethal_priority, is_regional_cluster,
+            created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """,
+        incidents_to_add,
+    )
+    conn.commit()
+    if close_at_end:
+        conn.close()
 supabase: Optional[Client] = None
 if SUPABASE_URL and SUPABASE_KEY:
     try:
@@ -573,6 +591,13 @@ def init_db():
     # Automatically apply any pending migrations
     migrate_schema()
 
+    # Seed batches 6-11 if needed
+    try:
+        seed_batch_incidents_6_to_9()
+        seed_batch_incidents_10_and_11()
+    except Exception as e:
+        print(f"[DB Notice] Seed batches notice: {e}")
+
 def migrate_schema():
     """Applies non-destructive schema migrations to existing databases."""
     conn = get_connection()
@@ -712,197 +737,201 @@ def update_incident_dispatch(incident_id: int, agency: str, status: str, notes: 
     conn.close()
     return dict(updated) if updated else {}
 
+def seed_batch_incidents_10_and_11(conn=None):
+    """Seeds realistic incidents 10 and 11 and their initial reports safely."""
+    close_at_end = False
+    if conn is None:
+        conn = get_connection()
+        close_at_end = True
+    cursor = conn.cursor()
+    now = datetime.now().isoformat()
+
+    # 1. Incidents Definitions
+    new_incidents = [
+        # Incident 10: Under Audit Queue (UNVERIFIED)
+        (
+            10,
+            "Subsurface Cable Sparking Near Sailashree Vihar",
+            "Single citizen report of sparking and popping noises from utility junction; awaiting second corroborator.",
+            "A lone eyewitness transmission logged claims recurring sparks and popping noises emitting from a utility junction box along Sailashree Vihar Main Road. The signal remains uncorroborated and is held in the Under Audit Queue.",
+            "",
+            "Civic",
+            20.3284,
+            85.8071,
+            1,
+            34,
+            "UNVERIFIED",
+            json.dumps([
+                {"label": "Initial eyewitness submission", "value": "+25"},
+                {"label": "Awaiting independent corroboration", "value": "-15"},
+                {"label": "Geotag matched to utility corridor", "value": "+10"},
+            ]),
+            1,
+            1,
+            "PENDING",
+            "CIVIC",
+            "Pending second independent verification before dispatching field crews.",
+            None,
+            "NONE",
+            "ACTIVE",
+            "NONE",
+            0,
+            0,
+            0,
+            now,
+            now,
+        ),
+        # Incident 11: Police Assault Queue (VERIFIED / DISPATCHED)
+        (
+            11,
+            "Violent Market Altercation & Public Disturbance at Bapuji Nagar",
+            "Violent confrontation involving blunt objects outside market stalls; PCR 112 units actively dispatched.",
+            "Rapid Response Police PCR units were dispatched to Bapuji Nagar market following urgent eyewitness transmissions reporting a violent group altercation spilling onto the roadway. Two individuals sustained minor injuries; police units are securing the lane.",
+            "",
+            "Assault",
+            20.2614,
+            85.8331,
+            1,
+            86,
+            "VERIFIED",
+            json.dumps([
+                {"label": "Corroborated by 3 independent reports", "value": "+22"},
+                {"label": "Anti-Sybil Subnet Diversity: 3 networks", "value": "+18"},
+                {"label": "Confirmed casualty threat priority", "value": "+15"},
+                {"label": "Police 112 Units Dispatched", "value": "+15"},
+            ]),
+            3,
+            3,
+            "DISPATCHED",
+            "POLICE",
+            "PCR Van 12 and Capital Station patrol units dispatched to Bapuji Nagar square.",
+            now,
+            "CONFIRMED",
+            "ACTIVE",
+            "POLICE",
+            0,
+            0,
+            0,
+            now,
+            now,
+        ),
+    ]
+    
+    cursor.executemany(
+        """
+        INSERT OR REPLACE INTO incidents (
+            id, title, summary, full_article, primary_image, category, latitude, longitude,
+            is_spatial, confidence_score, status, explainability_json, report_count, source_diversity,
+            dispatch_status, dispatched_agency, dispatch_notes, dispatched_at,
+            injuries, threat_state, responders_present, dispute_count, is_lethal_priority, is_regional_cluster,
+            created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """,
+        new_incidents,
+    )
+
+    cursor.execute("""
+        INSERT OR IGNORE INTO users (id, username, name, email, phone, password_hash, role, is_verified, trust_score, strike_count, is_quarantined, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, ("usr_stringer1", "stringer_patia", "Ravi Mohanty", "stringer@dailybugle.com", "+919876543212", hash_password("citizen123"), "CITIZEN", 1, 0.75, 0, 0, now))
+
+    # 2. Corroborating Reports Definitions
+    new_reports = [
+        # Report for Incident 10 (Under Audit)
+        (
+            "usr_stringer1",
+            10,
+            "Civic",
+            "Hearing sharp electrical cracking sounds and seeing intermittent blue sparks coming from the roadside trench near the Sai Temple turn.",
+            20.3284,
+            85.8071,
+            1,
+            "",
+            "NONE",
+            "ACTIVE",
+            "NONE",
+            "192.168.1.45",
+            "ua_stringer_device",
+            "",
+            now,
+        ),
+        # Reports for Incident 11 (Police Assault)
+        (
+            "usr_peter",
+            11,
+            "Assault",
+            "Large group fighting with sticks outside the electronics arcade. Glass bottles thrown onto the road.",
+            20.2614,
+            85.8331,
+            1,
+            "",
+            "CONFIRMED",
+            "ACTIVE",
+            "POLICE",
+            "10.0.0.12",
+            "ua_peter_phone",
+            "",
+            now,
+        ),
+        (
+            "usr_stringer1",
+            11,
+            "Assault",
+            "Two shop workers injured while trying to pull their merchandise inside. Traffic completely halted on Bapuji Nagar 1st line.",
+            20.2616,
+            85.8333,
+            1,
+            "",
+            "CONFIRMED",
+            "ACTIVE",
+            "POLICE",
+            "172.16.4.88",
+            "ua_stringer_tablet",
+            "",
+            now,
+        ),
+        (
+            "usr_editor",
+            11,
+            "Assault",
+            "Police siren audible; PCR van turning into the market from the Janpath junction.",
+            20.2612,
+            85.8329,
+            1,
+            "",
+            "CONFIRMED",
+            "ACTIVE",
+            "POLICE",
+            "127.0.0.1",
+            "ua_desk_terminal",
+            "",
+            now,
+        ),
+    ]
+    
+    cursor.executemany(
+        """
+        INSERT INTO reports (
+            user_id, incident_id, category, description, latitude, longitude,
+            is_spatial, image_url, injuries, threat_state, responders_present,
+            client_ip, device_hash, image_hash, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """,
+        new_reports,
+)
+    conn.commit()
+    if close_at_end:
+        conn.close()
+
+    # 3. Compute Credibility Matrices
+    try:
+        import trust_engine
+
+        trust_engine.compute_credibility_matrix(10)
+        trust_engine.compute_credibility_matrix(11)
+    except Exception as e:
+        pass
+
 if __name__ == "__main__":
     init_db()
     print("Database schema successfully configured with OTP tokens, article structures, and dispatch pipelines.")
-import json
-import sqlite3
-from datetime import datetime
-
-conn = sqlite3.connect("bugle.db")
-cursor = conn.cursor()
-now = datetime.now().isoformat()
-
-# 1. Incidents Definitions
-new_incidents = [
-    # Incident 10: Under Audit Queue (UNVERIFIED)
-    (
-        10,
-        "Subsurface Cable Sparking Near Sailashree Vihar",
-        "Single citizen report of sparking and popping noises from utility junction; awaiting second corroborator.",
-        "A lone eyewitness transmission logged claims recurring sparks and popping noises emitting from a utility junction box along Sailashree Vihar Main Road. The signal remains uncorroborated and is held in the Under Audit Queue.",
-        "",
-        "Civic",
-        20.3284,
-        85.8071,
-        1,
-        34,
-        "UNVERIFIED",
-        json.dumps([
-            {"label": "Initial eyewitness submission", "value": "+25"},
-            {"label": "Awaiting independent corroboration", "value": "-15"},
-            {"label": "Geotag matched to utility corridor", "value": "+10"},
-        ]),
-        1,
-        1,
-        "PENDING",
-        "CIVIC",
-        "Pending second independent verification before dispatching field crews.",
-        None,
-        "NONE",
-        "ACTIVE",
-        "NONE",
-        0,
-        0,
-        0,
-        now,
-        now,
-    ),
-    # Incident 11: Police Assault Queue (VERIFIED / DISPATCHED)
-    (
-        11,
-        "Violent Market Altercation & Public Disturbance at Bapuji Nagar",
-        "Violent confrontation involving blunt objects outside market stalls; PCR 112 units actively dispatched.",
-        "Rapid Response Police PCR units were dispatched to Bapuji Nagar market following urgent eyewitness transmissions reporting a violent group altercation spilling onto the roadway. Two individuals sustained minor injuries; police units are securing the lane.",
-        "",
-        "Assault",
-        20.2614,
-        85.8331,
-        1,
-        86,
-        "VERIFIED",
-        json.dumps([
-            {"label": "Corroborated by 3 independent reports", "value": "+22"},
-            {"label": "Anti-Sybil Subnet Diversity: 3 networks", "value": "+18"},
-            {"label": "Confirmed casualty threat priority", "value": "+15"},
-            {"label": "Police 112 Units Dispatched", "value": "+15"},
-        ]),
-        3,
-        3,
-        "DISPATCHED",
-        "POLICE",
-        "PCR Van 12 and Capital Station patrol units dispatched to Bapuji Nagar square.",
-        now,
-        "CONFIRMED",
-        "ACTIVE",
-        "POLICE",
-        0,
-        0,
-        0,
-        now,
-        now,
-    ),
-]
-
-cursor.executemany(
-    """
-    INSERT OR REPLACE INTO incidents (
-        id, title, summary, full_article, primary_image, category, latitude, longitude,
-        is_spatial, confidence_score, status, explainability_json, report_count, source_diversity,
-        dispatch_status, dispatched_agency, dispatch_notes, dispatched_at,
-        injuries, threat_state, responders_present, dispute_count, is_lethal_priority, is_regional_cluster,
-        created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-""",
-    new_incidents,
-)
-
-# 2. Corroborating Reports Definitions
-new_reports = [
-    # Report for Incident 10 (Under Audit)
-    (
-        "usr_stringer1",
-        10,
-        "Civic",
-        "Hearing sharp electrical cracking sounds and seeing intermittent blue sparks coming from the roadside trench near the Sai Temple turn.",
-        20.3284,
-        85.8071,
-        1,
-        "",
-        "NONE",
-        "ACTIVE",
-        "NONE",
-        "192.168.1.45",
-        "ua_stringer_device",
-        "",
-        now,
-    ),
-    # Reports for Incident 11 (Police Assault)
-    (
-        "usr_peter",
-        11,
-        "Assault",
-        "Large group fighting with sticks outside the electronics arcade. Glass bottles thrown onto the road.",
-        20.2614,
-        85.8331,
-        1,
-        "",
-        "CONFIRMED",
-        "ACTIVE",
-        "POLICE",
-        "10.0.0.12",
-        "ua_peter_phone",
-        "",
-        now,
-    ),
-    (
-        "usr_stringer1",
-        11,
-        "Assault",
-        "Two shop workers injured while trying to pull their merchandise inside. Traffic completely halted on Bapuji Nagar 1st line.",
-        20.2616,
-        85.8333,
-        1,
-        "",
-        "CONFIRMED",
-        "ACTIVE",
-        "POLICE",
-        "172.16.4.88",
-        "ua_stringer_tablet",
-        "",
-        now,
-    ),
-    (
-        "usr_editor",
-        11,
-        "Assault",
-        "Police siren audible; PCR van turning into the market from the Janpath junction.",
-        20.2612,
-        85.8329,
-        1,
-        "",
-        "CONFIRMED",
-        "ACTIVE",
-        "POLICE",
-        "127.0.0.1",
-        "ua_desk_terminal",
-        "",
-        now,
-    ),
-]
-
-cursor.executemany(
-    """
-    INSERT INTO reports (
-        user_id, incident_id, category, description, latitude, longitude,
-        is_spatial, image_url, injuries, threat_state, responders_present,
-        client_ip, device_hash, image_hash, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-""",
-    new_reports,
-)
-
-conn.commit()
-conn.close()
-
-# 3. Compute Credibility Matrices
-try:
-    import trust_engine
-
-    trust_engine.compute_credibility_matrix(10)
-    trust_engine.compute_credibility_matrix(11)
-    print("Credibility matrices computed successfully.")
-except Exception as e:
-    print(f"Matrix notice: {e}")
-
-print("Successfully inserted Under Audit and Police Assault incidents!")
