@@ -17,6 +17,7 @@
   <!-- Leaflet Map CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 
   <!-- Profile Drawer -->
   <link rel="stylesheet" href="/static/css/profile.css" />
@@ -136,7 +137,7 @@
 
     <!-- Interactive Tactical Map (Hidden until Radar tab clicked) -->
     <section id="radar-panel" style="display:none;">
-      <!-- Radar toolbar: status filters + legend -->
+      <!-- Radar toolbar: status filters + layer mode + view clarity + legend -->
       <div class="radar-toolbar" id="radar-toolbar">
         <div class="radar-filters">
           <span class="radar-toolbar-label">Filter:</span>
@@ -146,12 +147,26 @@
           <button class="radar-filter-btn" onclick="setRadarFilter('CORROBORATED',this)">🟢 Corroborated</button>
           <button class="radar-filter-btn" onclick="setRadarFilter('INFORMATION',this)">🔵 Information</button>
         </div>
+
+        <div class="radar-view-modes">
+          <span class="radar-toolbar-label">Layer:</span>
+          <button id="btn-mode-pins" class="radar-mode-btn active" onclick="setRadarDisplayMode('pins', this)">📍 Pins</button>
+          <button id="btn-mode-heat" class="radar-mode-btn" onclick="setRadarDisplayMode('heat', this)">🔥 Heatmap</button>
+          <button id="btn-toggle-radius" class="radar-mode-btn active" onclick="toggleHazardRadius(this)" title="Toggle 500m Spatiotemporal Quorum Perimeter">⚡ 500m Radius: ON</button>
+        </div>
+
+        <div class="radar-basemaps">
+          <span class="radar-toolbar-label">Map:</span>
+          <button id="btn-basemap-street" class="radar-mode-btn active" onclick="setBasemap('osm', this)">🗺️ Street</button>
+          <button id="btn-basemap-sat" class="radar-mode-btn" onclick="setBasemap('satellite', this)">🛰️ Satellite</button>
+        </div>
+
         <div class="radar-legend">
-          <span class="radar-legend-item"><span class="radar-dot" style="background:#39FF88;"></span>Verified</span>
-          <span class="radar-legend-item"><span class="radar-dot" style="background:#FFD43B;"></span>Under Review</span>
-          <span class="radar-legend-item"><span class="radar-dot" style="background:#FF4D6D;"></span>Critical</span>
-          <span class="radar-legend-item"><span class="radar-dot" style="background:#38BDF8;"></span>Community</span>
-          <span class="radar-legend-item"><span class="radar-dot" style="background:#A78BFA;"></span>AI Signal</span>
+          <span class="radar-legend-item"><span class="radar-dot" style="background:var(--bugle-green);"></span>Verified</span>
+          <span class="radar-legend-item"><span class="radar-dot" style="background:var(--bugle-yellow);"></span>Under Review</span>
+          <span class="radar-legend-item"><span class="radar-dot" style="background:var(--bugle-red);"></span>Critical</span>
+          <span class="radar-legend-item"><span class="radar-dot" style="background:var(--bugle-blue);"></span>Community</span>
+          <span class="radar-legend-item"><span class="radar-dot" style="background:var(--bugle-purple);"></span>AI Signal</span>
         </div>
       </div>
       <!-- Leaflet map canvas -->

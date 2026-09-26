@@ -353,7 +353,9 @@ body.jjj-active .card-headline a {
   border-bottom: none;
 }
 
-.radar-filters {
+.radar-filters,
+.radar-view-modes,
+.radar-basemaps {
   display: flex;
   align-items: center;
   gap: 0.45rem;
@@ -361,27 +363,32 @@ body.jjj-active .card-headline a {
 }
 
 .radar-toolbar-label {
-  font-size: 0.75rem;
+  font-size: 0.73rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   color: var(--text-dim);
-  margin-right: 0.25rem;
+  margin-right: 0.15rem;
 }
 
-.radar-filter-btn {
+.radar-filter-btn,
+.radar-mode-btn {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   color: var(--text-muted);
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   font-weight: 700;
-  padding: 0.35rem 0.75rem;
+  padding: 0.32rem 0.65rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
-.radar-filter-btn:hover {
+.radar-filter-btn:hover,
+.radar-mode-btn:hover {
   color: var(--text-main);
   border-color: var(--bugle-blue);
 }
@@ -391,6 +398,19 @@ body.jjj-active .card-headline a {
   color: #ffffff;
   border-color: var(--bugle-red);
   box-shadow: 0 0 10px var(--bugle-red-glow);
+}
+
+.radar-mode-btn.active {
+  background: var(--bg-card);
+  color: var(--bugle-blue);
+  border-color: var(--bugle-blue);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+}
+
+#btn-toggle-radius.active {
+  color: var(--bugle-yellow);
+  border-color: var(--bugle-yellow);
+  box-shadow: 0 0 8px rgba(255, 212, 59, 0.25);
 }
 
 .radar-legend {

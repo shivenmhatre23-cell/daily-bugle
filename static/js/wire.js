@@ -33,8 +33,15 @@ function statusColor(inc) {
   return isLight ? "#D97706" : "#FFD43B";               // Under Review 🟡
 }
 
-/* ─── Active radar status filter ─── */
 let activeRadarFilter = "ALL";
+let radarDisplayMode = "pins"; // 'pins' or 'heat'
+let showHazardRadius = true;
+let currentBasemap = "osm"; // 'osm' or 'satellite'
+let hazardRadiusGroup = null;
+let heatLayer = null;
+
+const OSM_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const SAT_TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 
 function setRadarFilter(filter, btn) {
   activeRadarFilter = filter;
@@ -43,14 +50,50 @@ function setRadarFilter(filter, btn) {
   renderRadarLayers(rawFeedIncidents);
 }
 
-/* ─── OpenStreetMap Tile management with proper attribution ─── */
+function setRadarDisplayMode(mode, btn) {
+  radarDisplayMode = mode;
+  document.querySelectorAll(".radar-view-modes .radar-mode-btn:not(#btn-toggle-radius)").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  renderRadarLayers(rawFeedIncidents);
+}
+
+function toggleHazardRadius(btn) {
+  showHazardRadius = !showHazardRadius;
+  if (btn) {
+    btn.classList.toggle("active", showHazardRadius);
+    btn.textContent = showHazardRadius ? "⚡ 500m Radius: ON" : "⚡ 500m Radius: OFF";
+  }
+  renderRadarLayers(rawFeedIncidents);
+}
+
+function setBasemap(type, btn) {
+  currentBasemap = type;
+  document.querySelectorAll(".radar-basemaps .radar-mode-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  setRadarTileTheme();
+}
+
+/* ─── Map Tile management (Crisp OSM + High-Res Satellite) ─── */
 function setRadarTileTheme() {
   if (!leafletMap) return;
   if (currentTileLayer) leafletMap.removeLayer(currentTileLayer);
-  currentTileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
-    maxZoom: 19
-  }).addTo(leafletMap);
+
+  const tilePane = leafletMap.getPane("tilePane");
+  if (currentBasemap === "satellite") {
+    if (tilePane) tilePane.classList.add("no-invert");
+    currentTileLayer = L.tileLayer(SAT_TILE_URL, {
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, GIS Community',
+      maxZoom: 19,
+      detectRetina: true
+    }).addTo(leafletMap);
+  } else {
+    if (tilePane) tilePane.classList.remove("no-invert");
+    currentTileLayer = L.tileLayer(OSM_TILE_URL, {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+      detectRetina: true
+    }).addTo(leafletMap);
+  }
 }
 
 /* ─── Initialise map (once) ─── */
@@ -69,6 +112,7 @@ function initRadarMap() {
   }).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
   setRadarTileTheme();
+  hazardRadiusGroup = L.layerGroup().addTo(leafletMap);
   mapMarkersGroup = L.layerGroup().addTo(leafletMap);
 }
 
@@ -180,6 +224,11 @@ function buildPopupHTML(inc) {
 function renderRadarLayers(incidents) {
   if (!leafletMap || !mapMarkersGroup) return;
   mapMarkersGroup.clearLayers();
+  if (hazardRadiusGroup) hazardRadiusGroup.clearLayers();
+  if (heatLayer) {
+    leafletMap.removeLayer(heatLayer);
+    heatLayer = null;
+  }
 
   // Apply status filter
   let toPlot = (incidents || []).filter(i => i.is_spatial && i.latitude && i.longitude);
@@ -203,34 +252,97 @@ function renderRadarLayers(incidents) {
 
   const latLngs = [];
 
-  toPlot.forEach(inc => {
-    const color = statusColor(inc);
-    const isLethal = inc.is_lethal_priority === 1 || inc.status === "BUSTED" || inc.status === "SUSPICIOUS";
-    const ringRadius = isLethal ? 600 : 400;
-    const pinRadius  = isLethal ? 10  : 7;
+  // ─── HEATMAP DISPLAY MODE ───
+  if (radarDisplayMode === "heat") {
+    const heatPoints = toPlot.map(inc => {
+      const isLethal = inc.is_lethal_priority === 1 || inc.status === "BUSTED" || inc.status === "SUSPICIOUS";
+      const weight = isLethal ? 1.0 : (inc.confidence_score ? Math.max(0.35, inc.confidence_score / 100) : 0.6);
+      latLngs.push([inc.latitude, inc.longitude]);
+      return [inc.latitude, inc.longitude, weight];
+    });
 
-    // Hazard perimeter ring
-    L.circle([inc.latitude, inc.longitude], {
-      color,
-      fillColor: color,
-      fillOpacity: isLethal ? 0.20 : 0.12,
-      weight: isLethal ? 2.5 : 1.5,
-      radius: ringRadius
-    }).addTo(mapMarkersGroup).bindPopup(buildPopupHTML(inc), { maxWidth: 300 });
+    if (typeof L.heatLayer === "function") {
+      heatLayer = L.heatLayer(heatPoints, {
+        radius: 42,
+        blur: 24,
+        maxZoom: 16,
+        minOpacity: 0.35,
+        gradient: {
+          0.20: "#0284C7",
+          0.45: "#38BDF8",
+          0.65: "#FFD43B",
+          0.85: "#FF4D6D",
+          1.00: "#E11D48"
+        }
+      }).addTo(leafletMap);
+    } else {
+      // Thermal radial gradient fallback if leaflet-heat is not available
+      toPlot.forEach(inc => {
+        const color = statusColor(inc);
+        L.circle([inc.latitude, inc.longitude], {
+          radius: 700,
+          color: "transparent",
+          fillColor: color,
+          fillOpacity: 0.12
+        }).addTo(mapMarkersGroup);
+        L.circle([inc.latitude, inc.longitude], {
+          radius: 400,
+          color: "transparent",
+          fillColor: color,
+          fillOpacity: 0.28
+        }).addTo(mapMarkersGroup);
+      });
+    }
 
-    // Centre marker
-    const marker = L.circleMarker([inc.latitude, inc.longitude], {
-      radius: pinRadius,
-      color: "#ffffff",
-      weight: 2,
-      fillColor: color,
-      fillOpacity: 1
-    }).addTo(mapMarkersGroup);
+    // Keep compact interactive pins in heatmap mode for popup inspection
+    toPlot.forEach(inc => {
+      const color = statusColor(inc);
+      const marker = L.circleMarker([inc.latitude, inc.longitude], {
+        radius: 6,
+        color: "#ffffff",
+        weight: 1.5,
+        fillColor: color,
+        fillOpacity: 0.95
+      }).addTo(mapMarkersGroup);
+      marker.bindPopup(buildPopupHTML(inc), { maxWidth: 300 });
+    });
+  } else {
+    // ─── PIN & 500M BLAST RADIUS MODE ───
+    toPlot.forEach(inc => {
+      const color = statusColor(inc);
+      const isLethal = inc.is_lethal_priority === 1 || inc.status === "BUSTED" || inc.status === "SUSPICIOUS";
+      const pinRadius = isLethal ? 10 : 8;
 
-    marker.bindPopup(buildPopupHTML(inc), { maxWidth: 300 });
+      // 500m Spatiotemporal Clustering Hazard Blast Radius
+      if (showHazardRadius) {
+        const blastRing = L.circle([inc.latitude, inc.longitude], {
+          color: color,
+          fillColor: color,
+          fillOpacity: isLethal ? 0.18 : 0.09,
+          weight: isLethal ? 2.5 : 1.5,
+          radius: 500, // Exact 500-meter spatiotemporal clustering perimeter
+          className: isLethal ? "radar-blast-500m-critical" : "radar-blast-500m"
+        }).addTo(hazardRadiusGroup);
 
-    latLngs.push([inc.latitude, inc.longitude]);
-  });
+        blastRing.bindTooltip(`⚡ 500m Quorum Perimeter &bull; <b>${inc.title}</b>`, {
+          sticky: true,
+          direction: "top"
+        });
+      }
+
+      // Centre tactical marker
+      const marker = L.circleMarker([inc.latitude, inc.longitude], {
+        radius: pinRadius,
+        color: "#ffffff",
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 1
+      }).addTo(mapMarkersGroup);
+
+      marker.bindPopup(buildPopupHTML(inc), { maxWidth: 300 });
+      latLngs.push([inc.latitude, inc.longitude]);
+    });
+  }
 
   // Fit bounds if multiple pins
   if (latLngs.length > 1) {

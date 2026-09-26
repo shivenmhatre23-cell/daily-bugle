@@ -828,10 +828,43 @@ footer.bugle-footer {
 
 /* ─── Global OpenStreetMap Leaflet Tactical Theming ─── */
 [data-theme="dark"] .leaflet-tile-pane {
-  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+  filter: brightness(0.88) invert(100%) contrast(98%) hue-rotate(180deg) saturate(32%);
 }
 [data-theme="light"] .leaflet-tile-pane {
-  filter: none;
+  filter: contrast(104%) saturate(108%);
+}
+/* When satellite basemap is active, do not invert tiles */
+.leaflet-tile-pane.no-invert {
+  filter: none !important;
+}
+
+/* 500m Spatiotemporal Hazard Blast Radius Animation */
+@keyframes radar-blast-pulse {
+  0% {
+    stroke-opacity: 0.9;
+    stroke-width: 1.8px;
+    fill-opacity: 0.16;
+  }
+  50% {
+    stroke-opacity: 0.25;
+    stroke-width: 3.5px;
+    fill-opacity: 0.05;
+  }
+  100% {
+    stroke-opacity: 0.9;
+    stroke-width: 1.8px;
+    fill-opacity: 0.16;
+  }
+}
+
+.radar-blast-500m {
+  animation: radar-blast-pulse 2.8s infinite ease-in-out;
+  stroke-dasharray: 6, 4;
+}
+
+.radar-blast-500m-critical {
+  animation: radar-blast-pulse 1.8s infinite ease-in-out;
+  stroke-dasharray: 4, 3;
 }
 
 /* Leaflet Container & Popup Resets for Bugle UI */
