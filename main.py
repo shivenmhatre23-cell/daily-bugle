@@ -1008,7 +1008,8 @@ def update_incident_action(incident_id: int, action: str = Form(...), request: R
 
 if __name__ == "__main__":
     import uvicorn
-    host = os.getenv("HOST", "127.0.0.1")
+    is_prod = bool(os.getenv("RENDER") or os.getenv("PORT"))
+    host = os.getenv("HOST", "0.0.0.0" if is_prod else "127.0.0.1")
     port = int(os.getenv("PORT", 8000))
     print(f"Daily Bugle server running at http://{host}:{port}")
-    uvicorn.run("main:app", host=host, port=port, reload=True)
+    uvicorn.run("main:app", host=host, port=port, reload=not is_prod)
