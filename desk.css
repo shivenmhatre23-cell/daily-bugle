@@ -1,0 +1,242 @@
+/* ==========================================================================
+   THE DAILY BUGLE - AUTHORITY DESK & TRIAGE CONSOLE (CYBER NOIR / EDITORIAL DARK)
+   ========================================================================== */
+
+.desk-wrapper {
+  max-width: 1400px;
+  width: 100%;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+}
+
+.desk-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-surface);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.75rem;
+  box-shadow: var(--shadow-card);
+  flex-wrap: wrap;
+  gap: 1.25rem;
+}
+
+.desk-title-group h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.5px;
+}
+
+.desk-title-group p {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin-top: 0.25rem;
+}
+
+.stats-bar {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-subtle);
+  padding: 0.6rem 1.25rem;
+  border-radius: var(--radius-md);
+  min-width: 100px;
+  transition: border-color var(--transition-fast);
+}
+
+.stat-item:hover {
+  border-color: var(--bugle-blue);
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-val {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--bugle-blue);
+}
+
+/* Incident Review Table */
+.table-container {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  box-shadow: var(--shadow-card);
+}
+
+.triage-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.triage-table th {
+  background: var(--bg-elevated);
+  padding: 1rem 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 2px solid var(--border-subtle);
+  letter-spacing: 0.5px;
+}
+
+.triage-table td {
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.9rem;
+  vertical-align: middle;
+  transition: background var(--transition-fast);
+}
+
+.triage-table tr:hover td {
+  background: var(--bg-card-hover);
+}
+
+.incident-cell {
+  max-width: 360px;
+}
+
+.cell-title {
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 0.98rem;
+  line-height: 1.35;
+  margin-bottom: 0.25rem;
+}
+
+.cell-desc {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.score-badge {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.score-high {
+  background: rgba(57, 255, 136, 0.15);
+  color: var(--bugle-green);
+  border: 1px solid rgba(57, 255, 136, 0.4);
+}
+
+.score-mid {
+  background: rgba(255, 212, 59, 0.15);
+  color: var(--bugle-yellow);
+  border: 1px solid rgba(255, 212, 59, 0.4);
+}
+
+.score-low {
+  background: rgba(255, 77, 109, 0.15);
+  color: var(--bugle-red);
+  border: 1px solid rgba(255, 77, 109, 0.4);
+}
+
+.action-cluster {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-triage {
+  border: none;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+}
+
+.btn-triage-verify {
+  background: rgba(57, 255, 136, 0.15);
+  color: var(--bugle-green);
+  border: 1px solid rgba(57, 255, 136, 0.5);
+}
+
+.btn-triage-verify:hover {
+  background: var(--bugle-green);
+  color: #000000;
+  box-shadow: 0 0 14px var(--bugle-green-glow);
+}
+
+.btn-triage-dispute {
+  background: rgba(255, 77, 109, 0.15);
+  color: var(--bugle-red);
+  border: 1px solid rgba(255, 77, 109, 0.4);
+}
+
+.btn-triage-dispute:hover {
+  background: var(--bugle-red);
+  color: #ffffff;
+  box-shadow: 0 0 14px var(--bugle-red-glow);
+}
+
+[data-theme="light"] .score-high {
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--bugle-green);
+  border-color: rgba(22, 163, 74, 0.35);
+}
+
+[data-theme="light"] .score-mid {
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--bugle-yellow);
+  border-color: rgba(217, 119, 6, 0.35);
+}
+
+[data-theme="light"] .score-low {
+  background: rgba(225, 29, 72, 0.1);
+  color: var(--bugle-red);
+  border-color: rgba(225, 29, 72, 0.3);
+}
+
+[data-theme="light"] .btn-triage-verify {
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--bugle-green);
+  border-color: rgba(22, 163, 74, 0.35);
+}
+
+[data-theme="light"] .btn-triage-verify:hover {
+  background: var(--bugle-green);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+}
+
+[data-theme="light"] .btn-triage-dispute {
+  background: rgba(225, 29, 72, 0.1);
+  color: var(--bugle-red);
+  border-color: rgba(225, 29, 72, 0.3);
+}
+
+[data-theme="light"] .btn-triage-dispute:hover {
+  background: var(--bugle-red);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.25);
+}

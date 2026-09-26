@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Citizen Tip Line | The Daily Bugle</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Base and Report Form Styles -->
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/report.css" />
+
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Profile Drawer -->
+  <link rel="stylesheet" href="/static/css/profile.css" />
+  <script src="/static/js/profile.js" defer></script>
+
+  <!-- Theme Pre-render Script (Zero FOUC) -->
+  <script src="/static/js/theme.js"></script>
+</head>
+<body>
+
+  <!-- Masthead Navigation -->
+  <header class="bugle-masthead">
+    <div class="brand-wrapper">
+      <a href="/" class="brand-title">The Daily Bugle</a>
+      <span class="brand-subtitle">Citizen Tip Line</span>
+    </div>
+
+    <div class="nav-cluster">
+      <nav class="main-nav">
+        <a href="/">The Wire</a>
+        <a href="/report" class="active" style="color: var(--bugle-red); font-weight: 800;">🚨 Report Incident</a>
+        <a href="/desk" id="desk-nav-link" style="display: none;">Editor Desk</a>
+        <a href="/dispatch" id="dispatch-nav-link" style="display: none;">Emergency Dispatch</a>
+      </nav>
+
+      <!-- Theme Switcher Toggle -->
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+        <span class="theme-icon">☀️</span>
+        <span class="theme-label">Light</span>
+      </button>
+
+      <!-- Dynamic Session Pill -->
+      <div id="auth-header-container">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 0.78rem; color: #94a3b8; background: rgba(148, 163, 184, 0.1); border: 1px solid rgba(148, 163, 184, 0.25); padding: 3px 8px; border-radius: 999px;">Guest Reporter</span>
+          <a href="/login?redirect=/report" class="btn-auth-action" style="font-size: 0.75rem; padding: 3px 8px;">Sign In</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="report-wrapper">
+
+    <!-- Active Emergency SOS Dialer Banner -->
+    <section class="emergency-banner">
+      <div class="emergency-header">Urgent Life-Threatening Emergency? Contact Official Authorities Immediately</div>
+      <div class="sos-grid">
+        <a id="sos-police" href="tel:112" class="sos-call-btn">
+          <span>Police (112)</span>
+          <span class="tel-num">DIAL NOW</span>
+        </a>
+        <a id="sos-fire" href="tel:101" class="sos-call-btn">
+          <span>Fire Dept (101)</span>
+          <span class="tel-num">DIAL NOW</span>
+        </a>
+        <a id="sos-ambulance" href="tel:108" class="sos-call-btn">
+          <span>Ambulance (108)</span>
+          <span class="tel-num">DIAL NOW</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- Incident Filing Card -->
+    <div class="form-card">
+      <div class="form-header">
+        <h1 class="form-title">🚨 Report an Active Incident</h1>
+        <p class="form-desc">Civilian emergency intelligence intake. Submissions are cryptographically hashed, checked against nearby reports, and broadcast to emergency dispatchers.</p>
+      </div>
+
+      <form id="incident-report-form" enctype="multipart/form-data">
+        <input type="hidden" name="latitude" id="form-lat" value="20.2961" />
+        <input type="hidden" name="longitude" id="form-lng" value="85.8245" />
+        <input type="hidden" name="is_spatial" value="1" />
+        <input type="hidden" name="threat_state" value="ACTIVE" />
+        <input type="hidden" name="responders_present" value="NONE" />
+
+        <div class="form-group">
+          <label for="category-select">Incident Nature</label>
+          <select id="category-select" name="category" class="form-control" required>
+            <option value="Fire">🔥 Fire / Explosion / Hazardous Material</option>
+            <option value="Obstruction">🚗 Road Obstruction / Traffic Hazard / Crash</option>
+            <option value="Assault">🚨 Violence / Assault / Public Disturbance</option>
+            <option value="Civic">⚠️ Civic Danger / Power Grid / Flooding</option>
+          </select>
+        </div>
+
+        <!-- Landmark Geocoding Search & Map Pin Picker -->
+        <div class="form-group">
+          <label for="address-search">Incident Location (Search Landmark or Tap Pin)</label>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <input 
+              type="text" 
+              id="address-search" 
+              class="form-control" 
+              placeholder="Search landmark or road (e.g. KIIT Square, Patia, NH-16, Station Road)..." 
+              style="flex: 1;"
+            />
+            <button type="button" id="btn-geocode-search" class="btn-auth-action" style="padding: 0.5rem 1rem; font-size: 0.82rem; white-space: nowrap;">
+              🔍 Locate
+            </button>
+            <button type="button" id="btn-gps-locate" class="btn-auth-action" style="padding: 0.5rem 0.85rem; font-size: 0.82rem; white-space: nowrap; background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; color: #38bdf8;" title="Use My Current GPS Position">
+              📍 My GPS
+            </button>
+          </div>
+          <div id="picker-map" style="height: 200px; width: 100%; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); margin-bottom: 0.4rem;"></div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem;">
+            <div id="coords-display" style="color: #38bdf8; font-family: monospace;">
+              📍 Target: 20.296100° N, 85.824500° E
+            </div>
+            <div id="location-name-display" style="color: #94a3b8; font-style: italic; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px;">
+              Bhubaneswar Urban Grid
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div>
+            <label for="injuries-select" style="font-size: 0.82rem; font-weight: 700;">Casualties / Human Danger</label>
+            <select id="injuries-select" name="injuries" class="form-control">
+              <option value="NONE">None Observed</option>
+              <option value="SUSPECTED">⚠️ Suspected / Minor</option>
+              <option value="CONFIRMED">🚨 Confirmed Casualties</option>
+            </select>
+          </div>
+          <div>
+            <label for="recency-select" style="font-size: 0.82rem; font-weight: 700;">When did this happen?</label>
+            <select id="recency-select" name="recency" class="form-control">
+              <option value="NOW">🔴 Happening Right Now</option>
+              <option value="PAST_15_MIN">Within Last 15 Mins</option>
+              <option value="PAST_HOUR">Within Past Hour</option>
+              <option value="EARLIER">Earlier Today</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="report-desc">Eyewitness Observation Details</label>
+          <textarea
+            id="report-desc"
+            name="description"
+            class="form-control"
+            required
+            rows="3"
+            placeholder="Describe what you see clearly (e.g. 'Fallen electric transformer smoking near intersection', 'Two vehicles collided, lane blocked towards Patia')..."
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Photo / Video Evidence (Optional but accelerates verification)</label>
+          <label class="file-upload-box" for="file-upload" style="cursor: pointer;">
+            <span class="upload-hint">📸 Click or drag image proof here (EXIF & camera signatures preserved)</span>
+            <input type="file" id="file-upload" name="image" accept="image/*" />
+            <div id="file-selected-name" class="upload-filename"></div>
+          </label>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn-submit" style="background: var(--bugle-red); font-size: 1rem; font-weight: 800; letter-spacing: 0.5px; padding: 0.9rem;">
+          🚨 Submit Emergency Report (Alert Dispatch)
+        </button>
+      </form>
+    </div>
+
+    <!-- Submission Feedback Receipt Modal -->
+    <div id="submission-success-modal" style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 10000; align-items: center; justify-content: center; padding: 1.5rem;">
+      <div style="background: #0f172a; border: 1px solid rgba(225,29,72,0.5); border-radius: var(--radius-lg); max-width: 520px; width: 100%; padding: 2rem; box-shadow: 0 20px 40px rgba(0,0,0,0.85); text-align: center;">
+        <div style="font-size: 2.75rem; margin-bottom: 0.75rem;">🚨</div>
+        <h2 style="font-size: 1.4rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem;">Emergency Report Transmitted</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.25rem;">
+          Your report has been broadcast into the civic intelligence cascade and routed to local emergency dispatchers.
+        </p>
+        <div id="modal-tracking-details" style="background: #1e293b; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.5rem; text-align: left; font-size: 0.85rem;">
+          <!-- Dynamically populated via JS -->
+        </div>
+        <div style="display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;">
+          <a id="modal-view-incident-btn" href="#" class="btn-submit" style="text-decoration: none; padding: 0.7rem 1.25rem; font-size: 0.9rem; background: var(--bugle-red);">
+            View Live SITREP Tracking
+          </a>
+          <button onclick="window.location.href='/'" class="btn-auth-action" style="padding: 0.7rem 1.25rem;">
+            Return to Wire
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="bugle-footer">
+    <p>&copy; 2026 The Daily Bugle Intelligence Desk. Transforming civic noise into explainable truth.</p>
+  </footer>
+
+  <script src="/static/js/report.js"></script>
+
+  <!-- Global Session Sync Script -->
+  <script>
+    async function syncUserSession() {
+      const container = document.getElementById("auth-header-container");
+      const deskNav = document.getElementById("desk-nav-link");
+
+      try {
+        const res = await fetch("/api/auth/me");
+        const session = await res.json();
+
+        if (session.authenticated) {
+          const roleClass = session.role === "EDITOR" ? "role-editor" : "role-citizen";
+          if (session.role === "EDITOR") {
+            deskNav.style.display = "inline-block";
+            const dispNav = document.getElementById("dispatch-nav-link");
+            if (dispNav) dispNav.style.display = "inline-block";
+          }
+          renderProfileBadge(session, "auth-header-container");
+        } else {
+          // Frictionless Guest Mode: Do not block reporter!
+          container.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span style="font-size: 0.75rem; color: #94a3b8; background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); padding: 3px 8px; border-radius: 999px;">Guest Witness</span>
+              <a href="/login?redirect=/report" class="btn-auth-action" style="font-size: 0.75rem; padding: 3px 8px;">Sign In (Bonus Trust)</a>
+            </div>
+          `;
+        }
+      } catch (err) {
+        console.error("Session sync failed:", err);
+      }
+    }
+
+    async function signOut() {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    }
+
+    document.addEventListener("DOMContentLoaded", syncUserSession);
+  </script>
+</body>
+</html>

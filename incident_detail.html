@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Incident File | The Daily Bugle</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Base and Layout Styles -->
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/wire.css" />
+
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Profile Drawer -->
+  <link rel="stylesheet" href="/static/css/profile.css" />
+  <script src="/static/js/profile.js" defer></script>
+
+  <!-- Theme Pre-render Script (Zero FOUC) -->
+  <script src="/static/js/theme.js"></script>
+
+  <style>
+    .article-container {
+      max-width: 960px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+    }
+
+    .back-nav {
+      margin-bottom: 1.5rem;
+    }
+
+    .back-nav a {
+      color: var(--bugle-blue);
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .article-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 2.5rem;
+      box-shadow: var(--shadow-card);
+    }
+
+    .article-header {
+      border-bottom: 1px solid var(--border-subtle);
+      padding-bottom: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .article-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .article-title {
+      font-size: 2.2rem;
+      line-height: 1.25;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 0.75rem;
+    }
+
+    .article-lead {
+      font-size: 1.15rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      line-height: 1.6;
+    }
+
+    .article-body {
+      font-size: 1.05rem;
+      line-height: 1.8;
+      color: var(--text-main);
+      white-space: pre-line;
+      margin-bottom: 2.5rem;
+    }
+
+    .article-grid-layout {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 2rem;
+    }
+
+    .article-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .sidebar-widget {
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+    }
+
+    .sidebar-widget h3 {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      margin-bottom: 1rem;
+    }
+
+    #single-map-canvas {
+      height: 220px;
+      width: 100%;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+    }
+
+    .eyewitness-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .report-entry {
+      border-left: 3px solid var(--bugle-blue);
+      padding-left: 0.85rem;
+    }
+
+    .report-entry .reporter-header {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .report-entry .report-time {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+
+    .report-entry .report-text {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    .evidence-thumb {
+      width: 100%;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      margin-top: 0.5rem;
+      max-height: 180px;
+      object-fit: cover;
+    }
+
+    @media (max-width: 820px) {
+      .article-grid-layout {
+        grid-template-columns: 1fr;
+      }
+      .article-card {
+        padding: 1.5rem;
+      }
+      .article-title {
+        font-size: 1.6rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Masthead Navigation -->
+  <header class="bugle-masthead">
+    <div class="brand-wrapper">
+      <a href="/" class="brand-title">The Daily Bugle</a>
+      <span class="brand-subtitle">Investigative Desk</span>
+    </div>
+
+    <div class="nav-cluster">
+      <nav class="main-nav">
+        <a href="/">The Wire</a>
+        <a href="/report" style="color: var(--bugle-red); font-weight: 800;">🚨 Report Incident</a>
+        <a href="/desk" id="desk-nav-link" style="display: none;">Editor Desk</a>
+        <a href="/dispatch">Emergency Dispatch</a>
+      </nav>
+
+      <!-- Theme Switcher Toggle -->
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+        <span class="theme-icon">☀️</span>
+        <span class="theme-label">Light</span>
+      </button>
+
+      <div id="auth-header-container">
+        <a href="/login" class="btn-auth-action">Sign In / Clearance</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="article-container">
+    <div class="back-nav">
+      <a href="/">&larr; Return to The Wire Feed</a>
+    </div>
+
+    <article class="article-card">
+      <div class="article-header">
+        <div class="article-meta">
+          <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+            <span id="article-badge" class="badge">AUDITING</span>
+            <span id="article-category" style="font-weight: 700; color: var(--text-muted);">CATEGORY</span>
+            <span id="badge-injuries" style="font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; background: rgba(255, 77, 109, 0.15); color: var(--bugle-red); font-weight: 700;">CASUALTIES: NONE</span>
+            <span id="badge-threat" style="font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; background: rgba(255, 212, 59, 0.15); color: var(--bugle-yellow); font-weight: 700;">ACTIVE THREAT</span>
+          </div>
+          <span id="article-timestamp" class="timestamp">Just now</span>
+        </div>
+        <h1 id="article-title" class="article-title">Loading incident report...</h1>
+        <p id="article-summary" class="article-lead"></p>
+
+        <!-- Civic Alert Broadcast Sharing Bar with Safety Guard -->
+        <div class="share-actions-bar" style="display: flex; gap: 0.75rem; align-items: center; margin-top: 1.25rem; flex-wrap: wrap;">
+          <div id="share-buttons-group" style="display: flex; gap: 0.75rem;">
+            <a id="share-wa-btn" href="#" target="_blank" style="background: rgba(57, 255, 136, 0.15); border: 1px solid var(--bugle-green); color: var(--bugle-green); text-decoration: none; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; border-radius: 4px;">
+              💬 Broadcast to WhatsApp
+            </a>
+            <a id="share-x-btn" href="#" target="_blank" style="background: var(--bg-elevated); border: 1px solid var(--border-subtle); color: var(--text-main); text-decoration: none; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; border-radius: 4px;">
+              𝕏 Share on X / Twitter
+            </a>
+          </div>
+          <div id="corroboration-share-group" style="display: none;">
+            <a id="corr-wa-btn" href="#" target="_blank" style="background: rgba(56, 189, 248, 0.15); border: 1px solid var(--bugle-blue); color: var(--bugle-blue); text-decoration: none; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.85rem; border-radius: 4px;">
+              🔍 Request Local Eyewitness Corroboration
+            </a>
+          </div>
+          <div id="share-warning-box" style="display: none; font-size: 0.78rem; color: var(--bugle-yellow); background: rgba(255, 212, 59, 0.12); border: 1px solid rgba(255, 212, 59, 0.35); padding: 0.45rem 0.85rem; border-radius: 4px;">
+            ⚠️ Public broadcast restricted: Report under verification to prevent rumor panic. Local witnesses may corroborate below.
+          </div>
+          <button onclick="copyIncidentLink()" style="background: transparent; border: 1px solid var(--border-strong); color: var(--text-muted); font-size: 0.8rem; font-weight: 600; padding: 0.45rem 0.85rem; cursor: pointer; border-radius: 4px;">
+            📋 Copy Incident Link
+          </button>
+        </div>
+
+        <!-- Ground Truth Reality Banner: Explicit Decoupling of Algorithmic Confidence from Ground Truth Certainty -->
+        <div id="ground-truth-banner" style="margin-top: 1.25rem; padding: 0.9rem 1.15rem; border-radius: var(--radius-sm); border: 1px solid rgba(255, 212, 59, 0.4); background: rgba(255, 212, 59, 0.08); display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+          <div style="flex: 1; min-width: 260px;">
+            <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+              <span id="ground-truth-badge" style="font-size: 0.74rem; font-weight: 800; padding: 3px 8px; border-radius: 4px; background: rgba(255, 212, 59, 0.25); color: var(--bugle-yellow); border: 1px solid rgba(255, 212, 59, 0.5); text-transform: uppercase; letter-spacing: 0.5px;">
+                ALGORITHMIC CORROBORATION (PHYSICAL REALITY UNCONFIRMED)
+              </span>
+              <span id="ground-truth-authority" style="font-size: 0.76rem; color: var(--text-muted); font-weight: 600;">Authority Attestation: Pending On-Scene Verification</span>
+            </div>
+            <div id="ground-truth-epistemic-warning" style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.4rem; line-height: 1.4;">
+              ⚠️ High algorithmic confidence indicates reporting density and signal corroboration, NOT physical reality. Automated scores should never be interpreted as certainty without on-scene confirmation.
+            </div>
+          </div>
+          <div style="text-align: right; border-left: 1px solid var(--border-subtle); padding-left: 1rem;">
+            <div style="font-size: 0.68rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;">Evidence Integrity Index</div>
+            <div id="matrix-composite-score" style="font-size: 1.35rem; font-weight: 800; color: var(--bugle-blue);">--/100</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="article-grid-layout">
+        <!-- Main Investigative Narrative -->
+        <div>
+          <div id="article-body" class="article-body"></div>
+
+          <!-- In-Place Eyewitness Corroboration Form -->
+          <div class="sidebar-widget" style="margin-bottom: 1.5rem; background: var(--bg-surface); border: 1px solid rgba(56, 189, 248, 0.35);">
+            <h3 style="color: var(--bugle-blue);">📍 Corroborate This Incident (On-Scene Stringer)</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+              Are you near this location? Add your observation or attach eyewitness photo proof to update the Trust Index.
+            </p>
+            <form id="corroborate-form" enctype="multipart/form-data">
+              <textarea id="corr-desc" name="description" rows="3" required placeholder="What do you observe right now at this scene?..." style="width: 100%; margin-bottom: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border-strong); color: var(--text-main); padding: 0.6rem; border-radius: var(--radius-sm); font-family: inherit; font-size: 0.88rem;"></textarea>
+              <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                <input type="file" id="corr-image" name="image" accept="image/*" style="font-size: 0.8rem; color: var(--text-dim);" />
+                <button type="submit" id="corr-btn" class="btn-triage btn-triage-verify">
+                  Attach Corroboration (+Trust)
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- On-Scene Dispute / Refutation Form -->
+          <div class="sidebar-widget" style="margin-bottom: 2rem; background: rgba(255, 77, 109, 0.08); border: 1px solid rgba(255, 77, 109, 0.3);">
+            <h3 style="color: var(--bugle-red);">🚩 Refute / Dispute Report (Nothing Observed On-Scene)</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+              Are you physically at this location and see no emergency? Submit an on-scene dispute to deduct confidence points and trigger urgent editor review.
+            </p>
+            <form id="dispute-form">
+              <textarea id="dispute-note" rows="2" required placeholder="State exact physical refutation (e.g., 'Standing at KIIT Square right now, road is open and no fire/smoke')..." style="width: 100%; margin-bottom: 0.75rem; background: var(--bg-primary); border: 1px solid var(--border-strong); color: var(--text-main); padding: 0.6rem; border-radius: var(--radius-sm); font-family: inherit; font-size: 0.88rem;"></textarea>
+              <button type="submit" id="dispute-btn" class="btn-triage btn-triage-dispute" style="width: 100%;">
+                Submit On-Scene Refutation (-15 Trust Penalty)
+              </button>
+            </form>
+          </div>
+
+          <!-- Eyewitness Corroboration Feed -->
+          <div class="sidebar-widget" style="margin-bottom: 1.5rem;">
+            <h3>Chronological Eyewitness Wire</h3>
+            <div id="eyewitness-list" class="eyewitness-timeline">
+              <p style="color: var(--text-dim); font-size: 0.85rem;">No eyewitness accounts on file yet.</p>
+            </div>
+          </div>
+
+          <!-- On-Scene Citizen Dispute Wire -->
+          <div class="sidebar-widget" id="dispute-list-widget" style="display: none; border-top: 3px solid var(--bugle-red);">
+            <h3 style="color: var(--bugle-red);">On-Scene Citizen Refutations (<span id="dispute-total-count">0</span>)</h3>
+            <div id="dispute-list" class="eyewitness-timeline"></div>
+          </div>
+        </div>
+
+        <!-- Sidebar: Trust Analysis & Geolocation Radar -->
+        <aside class="article-sidebar">
+          <!-- Security Agency Dispatch Status -->
+          <div class="sidebar-widget" style="border-top: 3px solid var(--bugle-red);">
+            <h3>Emergency Operations Link</h3>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem;">
+              <span style="font-size: 0.8rem; color: var(--text-dim);">Assigned Agency:</span>
+              <strong id="sidebar-agency" style="font-size: 0.85rem; color: var(--bugle-red);">PENDING</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 1.25rem;">
+              <span style="font-size: 0.8rem; color: var(--text-dim);">Dispatch State:</span>
+              <span id="sidebar-dispatch-status" style="font-size: 0.75rem; font-weight: 700; padding: 2px 7px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: var(--bugle-blue);">PENDING</span>
+            </div>
+            <a id="btn-print-sitrep" href="#" target="_blank" class="btn-auth-action" style="display: block; text-align: center; text-decoration: none; padding: 0.6rem; font-size: 0.82rem; background: var(--bg-surface); border: 1px solid var(--border-strong); color: var(--text-main);">
+              📄 Official SITREP Bulletin
+            </a>
+          </div>
+
+          <!-- 4-Step Verification Lifecycle Stepper -->
+          <div class="sidebar-widget" style="border-top: 3px solid var(--bugle-blue);">
+            <h3>Verification Lifecycle</h3>
+            <div id="verification-stepper" style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 0.85rem;">
+              <div class="step-item" id="step-1" style="display: flex; gap: 0.6rem; align-items: flex-start;">
+                <span id="step-1-icon" style="background: var(--bugle-green); color: #000; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">✓</span>
+                <div>
+                  <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">1. Signal Intake & Scrubbed</div>
+                  <div style="font-size: 0.72rem; color: var(--text-muted);">Cryptographic hashing & privacy scrub completed.</div>
+                </div>
+              </div>
+              <div class="step-item" id="step-2" style="display: flex; gap: 0.6rem; align-items: flex-start;">
+                <span id="step-2-icon" style="background: var(--border-subtle); color: var(--text-muted); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">2</span>
+                <div>
+                  <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">2. Cross-Source Corroboration</div>
+                  <div style="font-size: 0.72rem; color: var(--text-muted);">NLI stance matching & multi-source spatial check.</div>
+                </div>
+              </div>
+              <div class="step-item" id="step-3" style="display: flex; gap: 0.6rem; align-items: flex-start;">
+                <span id="step-3-icon" style="background: var(--border-subtle); color: var(--text-muted); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">3</span>
+                <div>
+                  <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">3. Dispatch / Field Response</div>
+                  <div style="font-size: 0.72rem; color: var(--text-muted);">Alert transmitted to responders or units en route.</div>
+                </div>
+              </div>
+              <div class="step-item" id="step-4" style="display: flex; gap: 0.6rem; align-items: flex-start;">
+                <span id="step-4-icon" style="background: var(--border-subtle); color: var(--text-muted); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 800; flex-shrink: 0;">4</span>
+                <div>
+                  <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-main);">4. Ground Truth Confirmed</div>
+                  <div style="font-size: 0.72rem; color: var(--text-muted);">On-scene confirmation by official responders.</div>
+                </div>
+              </div>
+            </div>
+            <div style="background: var(--bg-elevated); border: 1px dashed var(--border-subtle); border-radius: 4px; padding: 0.5rem 0.65rem; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4;">
+              💡 <strong>Verification Note:</strong> Trust score measures cross-source consistency, not final official closure.
+            </div>
+          </div>
+
+          <!-- Evidence Integrity Matrix Widget (4-Vector Forensics) -->
+          <div class="sidebar-widget" id="matrix-widget" style="border-top: 3px solid var(--bugle-purple);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+              <h3 style="margin-bottom: 0; color: var(--bugle-purple);">Evidence Integrity Matrix</h3>
+              <span id="matrix-overall-badge" style="font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; background: rgba(167, 139, 250, 0.15); color: var(--bugle-purple); font-weight: 700; border: 1px solid rgba(167, 139, 250, 0.4);">
+                4-VECTOR AUDIT
+              </span>
+            </div>
+            <p style="font-size: 0.74rem; color: #94a3b8; margin-bottom: 0.85rem; line-height: 1.4;">
+              Multi-signal explainable audit evaluating signal independence, physical grounding, media provenance, and consensus.
+            </p>
+            <div id="matrix-vectors-list" style="display: flex; flex-direction: column; gap: 0.65rem;"></div>
+          </div>
+
+          <div class="trust-panel" style="margin-top: 0;">
+            <div class="trust-header">
+              <span>Trust Index</span>
+              <span id="trust-metric" class="trust-metric-highlight">0/100</span>
+            </div>
+            <div class="score-bar-track">
+              <div id="trust-fill" class="score-bar-fill" style="width: 10%"></div>
+            </div>
+            <ul id="trust-reasons" class="explainability-reasons"></ul>
+          </div>
+
+          <div class="sidebar-widget">
+            <h3>Tactical Geolocation</h3>
+            <div id="single-map-canvas"></div>
+            <div id="coordinates-label" style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim); margin-top: 0.5rem; text-align: center;"></div>
+          </div>
+        </aside>
+      </div>
+    </article>
+  </main>
+
+  <footer class="bugle-footer">
+    <p>&copy; 2026 The Daily Bugle Intelligence Desk. Transforming civic noise into explainable truth.</p>
+  </footer>
+
+  <script>
+    // Extract incident ID from URL path: /incident/1
+    const pathParts = window.location.pathname.split("/").filter(Boolean);
+    const incidentId = pathParts[pathParts.length - 1];
+
+    async function loadIncidentArticle() {
+      try {
+        const response = await fetch(`/api/incidents/${incidentId}`);
+        if (!response.ok) {
+          document.getElementById("article-title").textContent = "Incident Article Not Found";
+          return;
+        }
+
+        const data = await response.json();
+
+        // Populate header details
+        document.getElementById("article-title").textContent = data.title;
+        document.getElementById("article-summary").textContent = data.summary;
+        document.getElementById("article-body").textContent = data.full_article || data.summary;
+        document.getElementById("article-category").textContent = data.category.toUpperCase();
+        document.getElementById("article-timestamp").textContent = new Date(data.updated_at).toLocaleString();
+
+        // Structured triage indicators
+        const injuriesBadge = document.getElementById("badge-injuries");
+        if (injuriesBadge) {
+          const inj = (data.injuries || "NONE").toUpperCase();
+          injuriesBadge.textContent = inj === "CONFIRMED" ? "🚨 CASUALTIES CONFIRMED" : (inj === "SUSPECTED" ? "CASUALTIES SUSPECTED" : "CASUALTIES: NONE");
+          injuriesBadge.style.background = inj === "CONFIRMED" ? "rgba(255, 77, 109, 0.35)" : "rgba(255, 77, 109, 0.15)";
+          injuriesBadge.style.color = "#FF4D6D";
+        }
+
+        const threatBadge = document.getElementById("badge-threat");
+        if (threatBadge) {
+          const thr = (data.threat_state || "ACTIVE").toUpperCase();
+          threatBadge.textContent = thr === "ACTIVE" ? "⚠️ ACTIVE THREAT" : (thr === "CONTAINED" ? "THREAT CONTAINED" : "AREA CLEARED");
+          threatBadge.style.color = thr === "ACTIVE" ? "#FFD43B" : "#39FF88";
+        }
+
+        const metaContainer = document.querySelector(".article-header-meta");
+        if (metaContainer) {
+          if (data.is_lethal_priority && !document.getElementById("badge-lethal-priority")) {
+            const lethalBadge = document.createElement("span");
+            lethalBadge.id = "badge-lethal-priority";
+            lethalBadge.style.cssText = "font-size: 0.75rem; font-weight: 800; padding: 3px 8px; border-radius: 4px; background: rgba(255, 77, 109, 0.3); color: #fff; border: 1px solid #FF4D6D; box-shadow: 0 0 8px rgba(255, 77, 109, 0.5);";
+            lethalBadge.textContent = "⚠️ HAZMAT / MASS CASUALTY PRIORITY";
+            metaContainer.appendChild(lethalBadge);
+          }
+          if (data.is_regional_cluster && !document.getElementById("badge-regional-echo")) {
+            const echoBadge = document.createElement("span");
+            echoBadge.id = "badge-regional-echo";
+            echoBadge.style.cssText = "font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; background: rgba(167, 139, 250, 0.25); color: #A78BFA; border: 1px solid #A78BFA;";
+            echoBadge.textContent = "📡 REGIONAL ACOUSTIC CLUSTER";
+            metaContainer.appendChild(echoBadge);
+          }
+        }
+
+        // Dispatch & SITREP
+        document.getElementById("sidebar-agency").textContent = (data.dispatched_agency || "UNASSIGNED").toUpperCase();
+        const dStat = document.getElementById("sidebar-dispatch-status");
+        dStat.textContent = (data.dispatch_status || "PENDING").replace("_", " ");
+        document.getElementById("btn-print-sitrep").href = `/incident/${data.id}/bulletin`;
+
+        // Share URLs & Safety Guard against spreading unverified panic
+        const shareGroup = document.getElementById("share-buttons-group");
+        const shareWarning = document.getElementById("share-warning-box");
+        const corrGroup = document.getElementById("corroboration-share-group");
+        const isVerifiedOrCorroborated = data.status === "VERIFIED" || data.status === "CORROBORATED" || data.status === "COMMUNITY";
+
+        if (isVerifiedOrCorroborated) {
+          if (shareGroup) shareGroup.style.display = "flex";
+          if (corrGroup) corrGroup.style.display = "none";
+          if (shareWarning) shareWarning.style.display = "none";
+          const alertText = `🚨 [DAILY BUGLE ALERT] ${data.title} (${data.category}) - Trust Confidence: ${data.confidence_score}%. Dispatched Agency: ${(data.dispatched_agency || 'Emergency Services')}. Read live SITREP report: ${window.location.href}`;
+          const waBtn = document.getElementById("share-wa-btn");
+          const xBtn = document.getElementById("share-x-btn");
+          if (waBtn) waBtn.href = `https://wa.me/?text=${encodeURIComponent(alertText)}`;
+          if (xBtn) xBtn.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(alertText)}`;
+        } else {
+          if (shareGroup) shareGroup.style.display = "none";
+          if (shareWarning) shareWarning.style.display = "block";
+          if (corrGroup) {
+            corrGroup.style.display = "block";
+            const corrText = `🔍 [NEIGHBORHOOD CHECK] Can anyone near this area verify this active report: "${data.title}"? Please corroborate or dispute on-scene here: ${window.location.href}`;
+            const corrWa = document.getElementById("corr-wa-btn");
+            if (corrWa) corrWa.href = `https://wa.me/?text=${encodeURIComponent(corrText)}`;
+          }
+        }
+
+        // Stepper State Logic
+        const s2Icon = document.getElementById("step-2-icon");
+        const s3Icon = document.getElementById("step-3-icon");
+        const s4Icon = document.getElementById("step-4-icon");
+
+        const hasCorroboration = data.report_count >= 2 || data.confidence_score >= 60 || data.status === "CORROBORATED" || data.status === "VERIFIED";
+        if (s2Icon && hasCorroboration) {
+          s2Icon.textContent = "✓";
+          s2Icon.style.background = "#39FF88";
+          s2Icon.style.color = "#000";
+        }
+
+        const isDispatched = ["DISPATCHED", "UNITS_EN_ROUTE", "ON_SCENE", "RESOLVED"].includes(data.dispatch_status) || data.status === "INVESTIGATING";
+        if (s3Icon && isDispatched) {
+          s3Icon.textContent = "✓";
+          s3Icon.style.background = "#39FF88";
+          s3Icon.style.color = "#000";
+        } else if (s3Icon && (data.confidence_score >= 70 || data.is_lethal_priority)) {
+          s3Icon.textContent = "⚡";
+          s3Icon.style.background = "#FFD43B";
+          s3Icon.style.color = "#000";
+        }
+
+        if (s4Icon) {
+          if (data.status === "VERIFIED") {
+            s4Icon.textContent = "✓";
+            s4Icon.style.background = "#39FF88";
+            s4Icon.style.color = "#000";
+          } else if (data.status === "BUSTED") {
+            s4Icon.textContent = "✕";
+            s4Icon.style.background = "#FF4D6D";
+            s4Icon.style.color = "#fff";
+          }
+        }
+
+        // Badge color
+        const badge = document.getElementById("article-badge");
+        badge.textContent = data.status;
+        badge.className = `badge badge-${data.status.toLowerCase()}`;
+
+        // Trust score
+        document.getElementById("trust-metric").textContent = `${data.confidence_score}/100`;
+        const fill = document.getElementById("trust-fill");
+        fill.style.width = `${Math.max(10, data.confidence_score)}%`;
+        if (data.status === "BUSTED" || data.status === "SUSPICIOUS") fill.classList.add("danger");
+
+        // Explainability reasons
+        let reasons = [];
+        try { reasons = JSON.parse(data.explainability_json); } catch (e) {}
+        const reasonsList = document.getElementById("trust-reasons");
+        reasonsList.innerHTML = reasons.map(r => `
+          <li>
+            <span>${r.label}</span>
+            <span class="${String(r.value).startsWith('+') ? 'val-pos' : 'val-neg'}">${r.value}</span>
+          </li>
+        `).join("");
+
+        // Credibility Matrix & Ground Truth Attestation Rendering
+        const matrix = data.credibility_matrix || null;
+        if (matrix) {
+          // 1. Ground Truth Reality Banner
+          const gt = matrix.ground_truth || {};
+          const gtBadge = document.getElementById("ground-truth-badge");
+          const gtAuth = document.getElementById("ground-truth-authority");
+          const gtWarning = document.getElementById("ground-truth-epistemic-warning");
+          const gtBanner = document.getElementById("ground-truth-banner");
+          const matrixScore = document.getElementById("matrix-composite-score");
+
+          if (gtBadge) {
+            gtBadge.textContent = gt.reality_badge || (gt.is_verified_physical ? "OFFICIALLY CONFIRMED" : "ALGORITHMIC CORROBORATION");
+            if (gt.is_verified_physical) {
+              gtBadge.style.background = "rgba(57, 255, 136, 0.25)";
+              gtBadge.style.color = "#39FF88";
+              gtBadge.style.borderColor = "rgba(57, 255, 136, 0.5)";
+              if (gtBanner) {
+                gtBanner.style.background = "rgba(57, 255, 136, 0.08)";
+                gtBanner.style.borderColor = "rgba(57, 255, 136, 0.35)";
+              }
+            } else if (data.status === "BUSTED") {
+              gtBadge.style.background = "rgba(255, 77, 109, 0.25)";
+              gtBadge.style.color = "#FF4D6D";
+              gtBadge.style.borderColor = "rgba(255, 77, 109, 0.5)";
+              if (gtBanner) {
+                gtBanner.style.background = "rgba(255, 77, 109, 0.08)";
+                gtBanner.style.borderColor = "rgba(255, 77, 109, 0.35)";
+              }
+            } else {
+              gtBadge.style.background = "rgba(255, 212, 59, 0.25)";
+              gtBadge.style.color = "#FFD43B";
+              gtBadge.style.borderColor = "rgba(255, 212, 59, 0.5)";
+              if (gtBanner) {
+                gtBanner.style.background = "rgba(255, 212, 59, 0.08)";
+                gtBanner.style.borderColor = "rgba(255, 212, 59, 0.35)";
+              }
+            }
+          }
+          if (gtAuth) {
+            gtAuth.textContent = `Attestation: ${(gt.verified_by || 'UNVERIFIED').replace(/_/g, ' ')}`;
+          }
+          if (gtWarning && gt.epistemic_warning) {
+            gtWarning.textContent = gt.is_verified_physical ? 
+              "✅ Physical ground truth attestation logged by emergency response units on-scene." : 
+              `⚠️ ${gt.epistemic_warning}`;
+          }
+          if (matrixScore) {
+            const eii = Math.round((matrix.evidence_integrity_index || 0.5) * 100);
+            matrixScore.textContent = `${eii}/100`;
+            matrixScore.style.color = eii >= 70 ? "#39FF88" : (eii >= 40 ? "#38BDF8" : "#FF4D6D");
+          }
+
+          // 2. 4-Vector Evidence Integrity Matrix List
+          const vectorsList = document.getElementById("matrix-vectors-list");
+          if (vectorsList && matrix.vectors) {
+            const v = matrix.vectors;
+            const vectorIcons = {
+              source_independence: "🌐",
+              geospatial_grounding: "📍",
+              evidence_provenance: "📷",
+              field_consensus: "⚖️"
+            };
+            const gradeColors = {
+              OPTIMAL: "#39FF88",
+              MODERATE: "#38BDF8",
+              COMPROMISED: "#FF4D6D",
+              LOW: "#FFD43B"
+            };
+
+            vectorsList.innerHTML = Object.entries(v).map(([key, item]) => {
+              const icon = vectorIcons[key] || "🔹";
+              const col = gradeColors[item.grade] || "#9CA3AF";
+              const pct = Math.round((item.score || 0) * 100);
+              return `
+                <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 4px; padding: 0.55rem 0.75rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-main);">
+                      ${icon} ${item.label}
+                    </span>
+                    <span style="font-size: 0.72rem; font-weight: 800; color: ${col};">
+                      ${pct}% (${item.grade})
+                    </span>
+                  </div>
+                  <div style="font-size: 0.71rem; color: var(--text-muted); line-height: 1.35;">
+                    ${item.details}
+                  </div>
+                </div>
+              `;
+            }).join("");
+          }
+        }
+
+        // Leaflet pinpoint
+        if (data.latitude && data.longitude) {
+          const map = L.map("single-map-canvas", { zoomControl: false }).setView([data.latitude, data.longitude], 14);
+          L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+            maxZoom: 19
+          }).addTo(map);
+
+          L.circleMarker([data.latitude, data.longitude], {
+            radius: 8,
+            color: "#fff",
+            fillColor: data.status === "VERIFIED" ? "var(--bugle-green)" : "var(--bugle-red)",
+            fillOpacity: 0.9,
+            weight: 2
+          }).addTo(map);
+          document.getElementById("coordinates-label").textContent = `${data.latitude.toFixed(5)}, ${data.longitude.toFixed(5)}`;
+        }
+
+        // Eyewitness reports
+        const eyewitnessList = document.getElementById("eyewitness-list");
+        if (data.reports && data.reports.length > 0) {
+          eyewitnessList.innerHTML = data.reports.map(rep => `
+            <div class="report-entry">
+              <div class="reporter-header">${rep.reporter_name || "Anonymous Stringer"} &bull; <span class="report-time">${new Date(rep.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+              <p class="report-text">${rep.description}</p>
+              ${rep.image_url ? `<img src="${rep.image_url}" class="evidence-thumb" alt="Eyewitness photo proof" />` : ""}
+            </div>
+          `).join("");
+        }
+
+        // On-Scene Citizen Dispute Wire
+        const disputeWidget = document.getElementById("dispute-list-widget");
+        const disputeList = document.getElementById("dispute-list");
+        const disputeCountSpan = document.getElementById("dispute-total-count");
+
+        if (data.disputes && data.disputes.length > 0) {
+          disputeWidget.style.display = "block";
+          disputeCountSpan.textContent = data.disputes.length;
+          disputeList.innerHTML = data.disputes.map(disp => `
+            <div class="report-entry" style="border-left-color: #FF4D6D;">
+              <div class="reporter-header" style="color: #FF4D6D;">${disp.disputer_name || "On-Scene Citizen"} &bull; <span class="report-time">${new Date(disp.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+              <p class="report-text" style="color: #9CA3AF;">"${disp.note}"</p>
+            </div>
+          `).join("");
+        } else {
+          disputeWidget.style.display = "none";
+        }
+      } catch (err) {
+        console.error("Failed to load article details:", err);
+      }
+    }
+
+    function initDisputeForm() {
+      const form = document.getElementById("dispute-form");
+      if (!form) return;
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("dispute-btn");
+        const note = document.getElementById("dispute-note").value.trim();
+        if (!note) return;
+
+        btn.disabled = true;
+        btn.textContent = "Filing Refutation...";
+
+        const formData = new FormData();
+        formData.append("note", note);
+
+        try {
+          const res = await fetch(`/api/incidents/${incidentId}/dispute`, {
+            method: "POST",
+            body: formData
+          });
+          const result = await res.json();
+          if (result.status === "success") {
+            alert(`On-scene refutation filed. Confidence penalized: New Score: ${result.score}/100.`);
+            document.getElementById("dispute-note").value = "";
+            loadIncidentArticle();
+          } else {
+            alert(result.error || result.message || "Failed to submit dispute.");
+          }
+        } catch (err) {
+          console.error("Dispute filing error:", err);
+          alert("Error submitting dispute.");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Submit On-Scene Refutation (-15 Trust Penalty)";
+        }
+      });
+    }
+
+    function initCorroborationForm() {
+      const form = document.getElementById("corroborate-form");
+      if (!form) return;
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById("corr-btn");
+        btn.disabled = true;
+        btn.textContent = "Transmitting...";
+
+        const formData = new FormData();
+        formData.append("description", document.getElementById("corr-desc").value);
+        const imgFile = document.getElementById("corr-image").files[0];
+        if (imgFile) formData.append("image", imgFile);
+
+        try {
+          const res = await fetch(`/api/incidents/${incidentId}/corroborate`, {
+            method: "POST",
+            body: formData
+          });
+          const result = await res.json();
+          if (result.status === "success") {
+            alert(`Corroboration accepted! Updated confidence score: ${result.score}/100`);
+            document.getElementById("corr-desc").value = "";
+            document.getElementById("corr-image").value = "";
+            loadIncidentArticle();
+          } else {
+            alert(result.error || result.message || "Failed to submit corroboration.");
+          }
+        } catch (err) {
+          console.error("Corroboration error:", err);
+          alert("Transmission error.");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Attach Corroboration";
+        }
+      });
+    }
+
+    async function syncUserSession() {
+      const container = document.getElementById("auth-header-container");
+      const deskNav = document.getElementById("desk-nav-link");
+      try {
+        const res = await fetch("/api/auth/me");
+        const session = await res.json();
+        if (session.authenticated) {
+          if (session.role === "EDITOR") deskNav.style.display = "inline-block";
+          renderProfileBadge(session, "auth-header-container");
+        }
+      } catch (err) {}
+    }
+
+    async function signOut() {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.reload();
+    }
+
+    function copyIncidentLink() {
+      navigator.clipboard.writeText(window.location.href);
+      alert("Incident alert link copied to clipboard!");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      syncUserSession();
+      loadIncidentArticle();
+      initCorroborationForm();
+      initDisputeForm();
+    });
+  </script>
+</body>
+</html>

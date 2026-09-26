@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Authority Triage Desk | The Daily Bugle</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Base and Desk Styles -->
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/desk.css" />
+
+  <!-- Profile Drawer -->
+  <link rel="stylesheet" href="/static/css/profile.css" />
+  <script src="/static/js/profile.js" defer></script>
+
+  <!-- Theme Pre-render Script (Zero FOUC) -->
+  <script src="/static/js/theme.js"></script>
+</head>
+<body>
+
+  <!-- Masthead Navigation -->
+  <header class="bugle-masthead">
+    <div class="brand-wrapper">
+      <a href="/" class="brand-title">The Daily Bugle</a>
+      <span class="brand-subtitle">Authority Triage Desk</span>
+    </div>
+
+    <div class="nav-cluster">
+      <nav class="main-nav">
+        <a href="/">The Wire</a>
+        <a href="/report" style="color: var(--bugle-red); font-weight: 800;">🚨 Report Incident</a>
+        <a href="/desk" class="active">Editor Desk</a>
+        <a href="/dispatch">Emergency Dispatch</a>
+      </nav>
+
+      <!-- Theme Switcher Toggle -->
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+        <span class="theme-icon">☀️</span>
+        <span class="theme-label">Light</span>
+      </button>
+
+      <!-- Dynamic Session Pill -->
+      <div id="auth-header-container"></div>
+    </div>
+  </header>
+
+  <main class="desk-wrapper">
+
+    <!-- Header Stats Banner -->
+    <section class="desk-header-bar">
+      <div class="desk-title-group">
+        <h1>Incident Triage & Verification Queue</h1>
+        <p>Human-in-the-loop audit console: Inspect signals, verify authentic threats, and quarantine bad actors.</p>
+      </div>
+      <div class="stats-bar">
+        <div class="stat-item">
+          <span class="stat-label">Active Signals</span>
+          <span id="stat-total" class="stat-val">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Verified</span>
+          <span id="stat-verified" class="stat-val" style="color: var(--bugle-green);">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Under Audit</span>
+          <span id="stat-review" class="stat-val" style="color: var(--bugle-yellow);">0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Incident Review Table -->
+    <div class="table-container">
+      <table class="triage-table">
+        <thead>
+          <tr>
+            <th>Incident & Details</th>
+            <th>Category</th>
+            <th>Trust Index</th>
+            <th>Corroboration</th>
+            <th>Status</th>
+            <th>Triage Action</th>
+          </tr>
+        </thead>
+        <tbody id="desk-table-body">
+          <!-- Dynamically populated via loadDeskQueue() -->
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <footer class="bugle-footer">
+    <p>&copy; 2026 The Daily Bugle Intelligence Desk. Transforming civic noise into explainable truth.</p>
+  </footer>
+
+  <script>
+    async function syncEditorSession() {
+      const container = document.getElementById("auth-header-container");
+      try {
+        const res = await fetch("/api/auth/me");
+        const session = await res.json();
+
+        if (!session.authenticated || session.role !== "EDITOR") {
+          window.location.href = "/login?redirect=/desk";
+          return;
+        }
+
+        renderProfileBadge(session, "auth-header-container");
+        loadDeskQueue();
+      } catch (err) {
+        window.location.href = "/login?redirect=/desk";
+      }
+    }
+
+    async function signOut() {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    }
+
+    async function loadDeskQueue() {
+      const tbody = document.getElementById("desk-table-body");
+      try {
+        const response = await fetch("/api/incidents?view=desk");
+        const incidents = await response.json();
+
+        tbody.innerHTML = "";
+        let verifiedCount = 0;
+        let reviewCount = 0;
+
+        if (incidents.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-dim);">
+                Queue is clear. No incidents currently awaiting inspection.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        incidents.forEach((inc) => {
+          if (inc.status === "VERIFIED") verifiedCount++;
+          if (inc.status === "REVIEW" || inc.status === "COMMUNITY") reviewCount++;
+
+          let reasons = [];
+          try {
+            reasons = JSON.parse(inc.explainability_json);
+          } catch (e) {
+            reasons = [];
+          }
+
+          let scoreClass = "score-mid";
+          if (inc.confidence_score >= 75) scoreClass = "score-high";
+          else if (inc.confidence_score < 35) scoreClass = "score-low";
+
+          let badgeClass = "badge-review";
+          if (inc.status === "VERIFIED") badgeClass = "badge-verified";
+          else if (inc.status === "COMMUNITY") badgeClass = "badge-community";
+          else if (inc.status === "BUSTED") badgeClass = "badge-busted";
+          else if (inc.status === "INVESTIGATING") badgeClass = "badge-review";
+
+          const reasonsSummary = reasons.map(r => `${r.label} (${r.value})`).join(" &bull; ");
+          const isLethal = inc.is_lethal_priority === 1 || inc.injuries === "CONFIRMED";
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td class="incident-cell">
+              <div class="cell-title">
+                ${inc.title}
+                ${isLethal ? '<span style="font-size: 0.68rem; font-weight: 800; background: rgba(225,29,72,0.3); color: #fb7185; border: 1px solid #e11d48; padding: 2px 6px; border-radius: 3px; margin-left: 6px;">⚠️ PRIORITY 1</span>' : ''}
+              </div>
+              <div class="cell-desc">${inc.summary}</div>
+              <div style="font-size: 0.72rem; color: var(--text-dim); margin-top: 4px;">
+                ${reasonsSummary}
+              </div>
+            </td>
+            <td><span style="font-weight: 700; color: var(--text-muted);">${inc.category}</span></td>
+            <td><span class="score-badge ${scoreClass}">${inc.confidence_score}/100</span></td>
+            <td>
+              <div style="font-size: 0.85rem; font-weight: 600;">${inc.report_count} Reports</div>
+              <div style="font-size: 0.75rem; color: var(--text-dim);">${inc.source_diversity} Unique Sources</div>
+            </td>
+            <td><span class="badge ${badgeClass}">${inc.status}</span></td>
+            <td>
+              <div class="action-cluster">
+                <button class="btn-triage btn-triage-verify" onclick="executeTriage(${inc.id}, 'VERIFY')">
+                  Verify
+                </button>
+                <button class="btn-triage btn-triage-dispute" onclick="executeTriage(${inc.id}, 'DISPUTE')">
+                  Dispute & Strike
+                </button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById("stat-total").textContent = incidents.length;
+        document.getElementById("stat-verified").textContent = verifiedCount;
+        document.getElementById("stat-review").textContent = reviewCount;
+
+      } catch (err) {
+        console.error("Failed to load triage queue:", err);
+      }
+    }
+
+    async function executeTriage(incidentId, action) {
+      const formData = new FormData();
+      formData.append("action", action);
+
+      try {
+        await fetch(`/api/incidents/${incidentId}/action`, {
+          method: "POST",
+          body: formData
+        });
+        loadDeskQueue();
+      } catch (err) {
+        console.error("Action execution failed:", err);
+        alert("Error executing triage action.");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", syncEditorSession);
+  </script>
+</body>
+</html>

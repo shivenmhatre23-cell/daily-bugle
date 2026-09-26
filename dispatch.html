@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security & Emergency Services Dispatch | The Daily Bugle</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Base and Layout Styles -->
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/desk.css" />
+
+  <!-- Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WPeE=" crossorigin=""></script>
+
+  <!-- Profile Drawer -->
+  <link rel="stylesheet" href="/static/css/profile.css" />
+  <script src="/static/js/profile.js" defer></script>
+
+  <!-- Theme Pre-render Script (Zero FOUC) -->
+  <script src="/static/js/theme.js"></script>
+
+  <!-- Supabase Official JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    .dispatch-container {
+      max-width: 1400px;
+      margin: 1.5rem auto;
+      padding: 0 1.5rem;
+    }
+
+    .dispatch-header {
+      background: linear-gradient(135deg, rgba(255, 77, 109, 0.12) 0%, var(--bg-surface) 100%);
+      border: 1px solid rgba(255, 77, 109, 0.3);
+      border-radius: var(--radius-lg);
+      padding: 1.75rem 2rem;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .dispatch-title h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .dispatch-title p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 0.25rem;
+    }
+
+    .agency-quick-pills {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .agency-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.6rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .agency-pill:hover, .agency-pill.active {
+      border-color: var(--bugle-red);
+      background: rgba(255, 77, 109, 0.15);
+      color: #fff;
+    }
+
+    .agency-pill .count {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+
+    .dispatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .dispatch-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .dispatch-card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(255, 77, 109, 0.5);
+      transform: translateY(-2px);
+    }
+
+    .dispatch-card.urgent {
+      border-left: 4px solid var(--bugle-red);
+    }
+
+    .dispatch-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .dispatch-card-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.3;
+    }
+
+    .dispatch-card-summary {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 1rem;
+    }
+
+    .dispatch-meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.85rem;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      background: var(--bg-primary);
+      border: 1px solid var(--border-subtle);
+      padding: 0.6rem 0.85rem;
+      border-radius: var(--radius-sm);
+      margin-bottom: 1.25rem;
+    }
+
+    .dispatch-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .dispatch-meta-item strong {
+      color: var(--text-main);
+    }
+
+    .dispatch-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 1rem;
+    }
+
+    .agency-selector-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .agency-select-input {
+      flex: 1;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-strong);
+      color: var(--text-main);
+      padding: 0.45rem 0.65rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .btn-dispatch-action {
+      background: var(--bugle-red);
+      color: #fff;
+      border: none;
+      padding: 0.55rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: background 0.15s ease;
+    }
+
+    .btn-dispatch-action:hover {
+      background: var(--bugle-red-hover);
+    }
+
+    .btn-dispatch-advance {
+      background: var(--bugle-blue);
+      color: #000;
+    }
+    .btn-dispatch-advance:hover {
+      background: var(--bugle-blue-hover);
+    }
+
+    .btn-dispatch-resolve {
+      background: var(--bugle-green);
+      color: #000;
+    }
+    .btn-dispatch-resolve:hover {
+      background: var(--bugle-green-hover);
+    }
+
+    [data-theme="light"] .btn-dispatch-advance,
+    [data-theme="light"] .btn-dispatch-resolve {
+      color: #ffffff;
+    }
+
+    .btn-sitrep-link {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 0.45rem 0.75rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+      transition: all 0.15s ease;
+    }
+
+    .btn-sitrep-link:hover {
+      color: var(--text-main);
+      border-color: var(--bugle-blue);
+      background: var(--bg-card-hover);
+    }
+
+    .status-badge-dispatch {
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-pending { background: rgba(255, 212, 59, 0.12); color: var(--bugle-yellow); border: 1px solid rgba(255, 212, 59, 0.4); }
+    .status-dispatched { background: rgba(56, 189, 248, 0.12); color: var(--bugle-blue); border: 1px solid rgba(56, 189, 248, 0.4); }
+    .status-units_en_route { background: rgba(167, 139, 250, 0.12); color: var(--bugle-purple); border: 1px solid rgba(167, 139, 250, 0.4); }
+    .status-on_scene { background: rgba(255, 77, 109, 0.12); color: var(--bugle-red); border: 1px solid rgba(255, 77, 109, 0.4); }
+    .status-resolved { background: rgba(57, 255, 136, 0.12); color: var(--bugle-green); border: 1px solid rgba(57, 255, 136, 0.4); }
+
+    .live-dot {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--bugle-red);
+      animation: pulseGlow 1.4s infinite;
+    }
+
+    @keyframes pulseGlow {
+      0% { box-shadow: 0 0 0 0 rgba(255, 77, 109, 0.7); }
+      70% { box-shadow: 0 0 0 8px rgba(255, 77, 109, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 77, 109, 0); }
+    }
+
+    /* ─── Tactical Operations Map ─── */
+    .dispatch-map-wrapper {
+      position: relative;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-card);
+    }
+
+    .dispatch-map-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.65rem 1.1rem;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .dispatch-map-header span.map-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-main);
+      font-size: 0.88rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .map-legend {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .map-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .map-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text-dim);
+    }
+
+    #dispatch-map-canvas {
+      width: 100%;
+      height: 380px;
+    }
+
+    /* Leaflet popup custom style */
+    .dispatch-popup .leaflet-popup-content-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      padding: 0;
+      overflow: hidden;
+    }
+    .dispatch-popup .leaflet-popup-content {
+      margin: 0;
+      font-family: var(--font-body);
+    }
+    .dispatch-popup .leaflet-popup-tip {
+      background: var(--bg-card);
+    }
+
+    /* Light mode: Reality Attestation box override */
+    [data-theme="light"] .reality-attest-box {
+      background: #F0F3F6 !important;
+      border-left-color: var(--bugle-green) !important;
+      color: var(--text-main) !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Masthead Navigation -->
+  <header class="bugle-masthead">
+    <div class="brand-wrapper">
+      <a href="/" class="brand-title">The Daily Bugle</a>
+      <span class="brand-subtitle">Emergency Services Command (SITREP)</span>
+    </div>
+
+    <div class="nav-cluster">
+      <nav class="main-nav">
+        <a href="/">The Wire</a>
+        <a href="/report" style="color: var(--bugle-red); font-weight: 800;">🚨 Report Incident</a>
+        <a href="/desk">Editor Desk</a>
+        <a href="/dispatch" class="active">Emergency Dispatch</a>
+      </nav>
+
+      <!-- Theme Switcher Toggle -->
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+        <span class="theme-icon">☀️</span>
+        <span class="theme-label">Light</span>
+      </button>
+
+      <!-- Dynamic Session Pill -->
+      <div id="auth-header-container"></div>
+    </div>
+  </header>
+
+  <main class="dispatch-container">
+
+    <!-- Header Stats Banner -->
+    <section class="dispatch-header">
+      <div class="dispatch-title">
+        <h1><span class="live-dot"></span> Emergency Services Triage Console</h1>
+        <p>Direct operational link for Police (112), Fire (101), and Ambulance (108) response units.</p>
+      </div>
+
+      <!-- Quick Agency Filter Pills -->
+      <div class="agency-quick-pills">
+        <button class="agency-pill active" onclick="setAgencyFilter('ALL', this)">
+          <span>🌐 All Services</span>
+          <span class="count" id="pill-all-count">0</span>
+        </button>
+        <button class="agency-pill" onclick="setAgencyFilter('POLICE', this)">
+          <span>🚨 Police (112)</span>
+          <span class="count" id="pill-police-count">0</span>
+        </button>
+        <button class="agency-pill" onclick="setAgencyFilter('FIRE', this)">
+          <span>🔥 Fire (101)</span>
+          <span class="count" id="pill-fire-count">0</span>
+        </button>
+        <button class="agency-pill" onclick="setAgencyFilter('AMBULANCE', this)">
+          <span>🚑 Ambulance (108)</span>
+          <span class="count" id="pill-ambulance-count">0</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Anti-Swatting & Velocity Diversion Warning Banner -->
+    <div id="swatting-warning-banner" style="display: none; background: rgba(245, 158, 11, 0.15); border: 2px solid #f59e0b; border-radius: var(--radius-md); padding: 1rem 1.5rem; margin-bottom: 2rem; color: #fef3c7; align-items: center; gap: 1rem; box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);">
+      <span style="font-size: 1.6rem;">⚠️</span>
+      <div>
+        <strong style="color: #fbbf24; text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.92rem;">Tactical Swatting & Velocity Burst Guard Active</strong>
+        <p id="swatting-warning-text" style="font-size: 0.85rem; margin: 0.25rem 0 0; color: #fde68a; line-height: 1.4;"></p>
+      </div>
+    </div>
+
+    <!-- ─── Tactical Operations Map ─── -->
+    <div class="dispatch-map-wrapper">
+      <div class="dispatch-map-header">
+        <span class="map-title">📡 Live Incident Radar — Tactical Overview</span>
+        <div class="map-legend">
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#FF4D6D;"></span> Critical / Lethal</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#FFD43B;"></span> Active / Pending</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#39FF88;"></span> Verified / On-Scene</span>
+          <span class="map-legend-item"><span class="map-legend-dot" style="background:#38BDF8;"></span> Dispatched</span>
+          <span id="dispatch-map-count" style="font-size:0.76rem; color: var(--text-dim); margin-left: 0.5rem;"></span>
+        </div>
+      </div>
+      <div id="dispatch-map-canvas"></div>
+    </div>
+
+    <!-- Dispatch Cards Grid -->
+    <section id="dispatch-grid" class="dispatch-grid">
+      <!-- Dynamically populated by loadDispatchQueue() -->
+    </section>
+
+  </main>
+
+  <footer class="bugle-footer">
+    <p>&copy; 2026 The Daily Bugle Intelligence Desk & Municipal Emergency Operations. Actionable intelligence for civic safety.</p>
+  </footer>
+
+  <script>
+    let currentAgencyFilter = "ALL";
+    let allIncidents = [];
+    let sbClient = null;
+
+    /* ─── Tactical Map ─── */
+    let dispatchMap = null;
+    let dispatchMarkers = null;
+    let dispatchTileLayer = null;
+    const DISPATCH_CENTER = [20.2961, 85.8245];
+
+    function initDispatchMap() {
+      if (dispatchMap) return;
+      dispatchMap = L.map("dispatch-map-canvas", { zoomControl: true, scrollWheelZoom: true }).setView(DISPATCH_CENTER, 12);
+      applyDispatchMapTheme();
+      dispatchMarkers = L.layerGroup().addTo(dispatchMap);
+
+      // Re-tile on theme change
+      window.addEventListener("bugle-theme-changed", (e) => applyDispatchMapTheme(e.detail.theme));
+    }
+
+    function applyDispatchMapTheme() {
+      if (dispatchTileLayer) dispatchMap.removeLayer(dispatchTileLayer);
+      dispatchTileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      }).addTo(dispatchMap);
+    }
+
+    function pinColorForIncident(inc) {
+      if (inc.is_lethal_priority) return "#FF4D6D";
+      const st = (inc.dispatch_status || "PENDING").toUpperCase();
+      if (st === "ON_SCENE" || st === "RESOLVED" || inc.status === "VERIFIED") return "#39FF88";
+      if (st === "DISPATCHED" || st === "UNITS_EN_ROUTE") return "#38BDF8";
+      return "#FFD43B";
+    }
+
+    function renderDispatchMap(incidents) {
+      if (!dispatchMap) return;
+      dispatchMarkers.clearLayers();
+
+      const validPins = incidents.filter(i => i.latitude && i.longitude);
+      const countEl = document.getElementById("dispatch-map-count");
+      if (countEl) countEl.textContent = `${validPins.length} incident${validPins.length !== 1 ? "s" : ""} plotted`;
+
+      if (validPins.length === 0) return;
+
+      const latLngs = [];
+
+      validPins.forEach(inc => {
+        const color = pinColorForIncident(inc);
+        const isLethal = !!inc.is_lethal_priority;
+
+        // Outer glow ring
+        L.circle([inc.latitude, inc.longitude], {
+          color,
+          fillColor: color,
+          fillOpacity: isLethal ? 0.18 : 0.10,
+          weight: isLethal ? 2.5 : 1.5,
+          radius: isLethal ? 600 : 400
+        }).addTo(dispatchMarkers);
+
+        // Center pin
+        const marker = L.circleMarker([inc.latitude, inc.longitude], {
+          radius: isLethal ? 10 : 8,
+          color: "#ffffff",
+          weight: 2,
+          fillColor: color,
+          fillOpacity: 1
+        }).addTo(dispatchMarkers);
+
+        // Popup
+        const st = (inc.dispatch_status || "PENDING").replace("_", " ");
+        const agency = inc.dispatched_agency || "—";
+        const theme = document.documentElement.getAttribute("data-theme") || "dark";
+        const bg = theme === "light" ? "#fff" : "#181C24";
+        const txt = theme === "light" ? "#111827" : "#F5F7FA";
+        const muted = theme === "light" ? "#4B5563" : "#9CA3AF";
+        const brd = theme === "light" ? "#DDE3EA" : "#252A33";
+
+        marker.bindPopup(`
+          <div style="background:${bg}; color:${txt}; min-width:200px; padding: 0.75rem 0.85rem; font-size:0.82rem; font-family: 'Inter', sans-serif; border-radius:8px;">
+            <div style="font-weight:800; font-size:0.9rem; margin-bottom:0.4rem; line-height:1.3;">${inc.title}</div>
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:0.5rem;">
+              <span style="padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:700; background:${color}22; color:${color}; border:1px solid ${color}66;">${st}</span>
+              ${isLethal ? `<span style="padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:700; background:#FF4D6D22; color:#FF4D6D; border:1px solid #FF4D6D66;">⚠️ PRIORITY 1</span>` : ""}
+            </div>
+            <div style="color:${muted}; font-size:0.75rem; display:flex; flex-direction:column; gap:0.2rem;">
+              <span>📂 ${inc.category}</span>
+              <span>🚓 Agency: <strong style="color:${txt};">${agency}</strong></span>
+              <span>🔐 Trust: <strong style="color:${color};">${inc.confidence_score}%</strong></span>
+              <span>👥 ${inc.report_count} report${inc.report_count !== 1 ? "s" : ""}</span>
+            </div>
+            <div style="margin-top:0.55rem; padding-top:0.4rem; border-top:1px solid ${brd};">
+              <a href="/incident/${inc.id}" target="_blank" style="font-size:0.75rem; font-weight:700; color:#38BDF8; text-decoration:none;">View Full SITREP →</a>
+            </div>
+          </div>
+        `, { className: "dispatch-popup", maxWidth: 270 });
+
+        latLngs.push([inc.latitude, inc.longitude]);
+      });
+
+      // Auto-fit bounds with padding
+      if (latLngs.length > 1) {
+        dispatchMap.fitBounds(L.latLngBounds(latLngs), { padding: [40, 40], maxZoom: 15 });
+      } else if (latLngs.length === 1) {
+        dispatchMap.setView(latLngs[0], 14);
+      }
+    }
+
+    async function syncSession() {
+      const container = document.getElementById("auth-header-container");
+      try {
+        const res = await fetch("/api/auth/me");
+        const session = await res.json();
+
+        if (!session.authenticated || !["EDITOR", "DISPATCHER"].includes(session.role)) {
+          alert("Access Restricted: Emergency Services Dispatcher or Editor clearance required.");
+          window.location.href = "/";
+          return;
+        }
+
+        renderProfileBadge(session, "auth-header-container");
+        loadDispatchQueue();
+        initDispatchMap();
+        initSupabaseRealtime();
+      } catch (err) {
+        window.location.href = "/login?redirect=/dispatch";
+      }
+    }
+
+    async function signOut() {
+      await fetch("/api/auth/logout", { method: "POST" });
+      window.location.href = "/login";
+    }
+
+    async function initSupabaseRealtime() {
+      try {
+        const res = await fetch("/api/config/supabase");
+        const cfg = await res.json();
+        if (cfg.url && cfg.publishable_key && window.supabase) {
+          sbClient = window.supabase.createClient(cfg.url, cfg.publishable_key);
+          const channel = sbClient.channel("bugle-alerts");
+          channel.on("broadcast", { event: "new-incident" }, () => loadDispatchQueue());
+          channel.on("broadcast", { event: "dispatch-update" }, () => loadDispatchQueue());
+          channel.on("broadcast", { event: "dispute-filed" }, () => loadDispatchQueue());
+          channel.subscribe();
+        }
+      } catch (e) {}
+    }
+
+    async function loadDispatchQueue() {
+      const grid = document.getElementById("dispatch-grid");
+      try {
+        const [resInc, resAnalytics] = await Promise.all([
+          fetch("/api/incidents?view=desk"),
+          fetch("/api/dispatch/analytics")
+        ]);
+        const incidents = await resInc.json();
+        allIncidents = incidents.filter(i => i.status !== "BUSTED");
+
+        try {
+          const analytics = await resAnalytics.json();
+          const banner = document.getElementById("swatting-warning-banner");
+          const text = document.getElementById("swatting-warning-text");
+          if (analytics.swatting_warning) {
+            banner.style.display = "flex";
+            text.textContent = analytics.warning_message;
+          } else {
+            banner.style.display = "none";
+          }
+        } catch (e) {}
+
+        updateCounts();
+        renderFilteredCards();
+        renderDispatchMap(allIncidents);
+      } catch (err) {
+        console.error("Failed to load dispatch queue:", err);
+      }
+    }
+
+    function updateCounts() {
+      let policeCount = 0;
+      let fireCount = 0;
+      let ambulanceCount = 0;
+
+      allIncidents.forEach(inc => {
+        const cat = (inc.category || "").toLowerCase();
+        const agency = (inc.dispatched_agency || "").toUpperCase();
+
+        if (agency === "POLICE" || cat.includes("assault") || cat.includes("dispute") || cat.includes("crime")) policeCount++;
+        if (agency === "FIRE" || cat.includes("fire") || cat.includes("explosion") || cat.includes("chemical")) fireCount++;
+        if (agency === "AMBULANCE" || cat.includes("obstruction") || cat.includes("civic") || cat.includes("medical")) ambulanceCount++;
+      });
+
+      document.getElementById("pill-all-count").textContent = allIncidents.length;
+      document.getElementById("pill-police-count").textContent = policeCount;
+      document.getElementById("pill-fire-count").textContent = fireCount;
+      document.getElementById("pill-ambulance-count").textContent = ambulanceCount;
+    }
+
+    function setAgencyFilter(agency, btn) {
+      currentAgencyFilter = agency;
+      document.querySelectorAll(".agency-pill").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      renderFilteredCards();
+    }
+
+    function renderFilteredCards() {
+      const grid = document.getElementById("dispatch-grid");
+      grid.innerHTML = "";
+
+      const filtered = allIncidents.filter(inc => {
+        if (currentAgencyFilter === "ALL") return true;
+        const agency = (inc.dispatched_agency || "").toUpperCase();
+        const cat = (inc.category || "").toLowerCase();
+
+        if (currentAgencyFilter === "POLICE") return agency === "POLICE" || cat.includes("assault") || cat.includes("crime");
+        if (currentAgencyFilter === "FIRE") return agency === "FIRE" || cat.includes("fire") || cat.includes("explosion");
+        if (currentAgencyFilter === "AMBULANCE") return agency === "AMBULANCE" || cat.includes("obstruction") || cat.includes("civic");
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: var(--bg-card); border-radius: var(--radius-lg); border: 1px dashed var(--border-subtle); color: var(--text-dim);">
+            <h3>No incidents currently in this agency's dispatch queue.</h3>
+            <p>Standby mode active. New verified alerts will appear automatically via Realtime dispatch.</p>
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(inc => {
+        const status = inc.dispatch_status || "PENDING";
+        const agency = inc.dispatched_agency || inferDefaultAgency(inc.category);
+        const isUrgent = inc.confidence_score >= 75 || inc.status === "VERIFIED" || inc.is_lethal_priority === 1;
+
+        let nextActionBtn = "";
+        if (status === "PENDING") {
+          nextActionBtn = `<button class="btn-dispatch-action" onclick="advanceDispatch(${inc.id}, '${agency}', 'DISPATCHED')">⚡ Dispatch Exploratory Units</button>`;
+        } else if (status === "DISPATCHED") {
+          nextActionBtn = `<button class="btn-dispatch-action btn-dispatch-advance" onclick="advanceDispatch(${inc.id}, '${agency}', 'UNITS_EN_ROUTE')">🚓 Units En Route</button>`;
+        } else if (status === "UNITS_EN_ROUTE") {
+          nextActionBtn = `<button class="btn-dispatch-action btn-dispatch-advance" onclick="advanceDispatch(${inc.id}, '${agency}', 'ON_SCENE')">📍 Mark On Scene (Verify Incident)</button>`;
+        } else if (status === "ON_SCENE") {
+          nextActionBtn = `<button class="btn-dispatch-action btn-dispatch-resolve" onclick="advanceDispatch(${inc.id}, '${agency}', 'RESOLVED')">✅ Incident Contained / Resolved</button>`;
+        } else {
+          nextActionBtn = `<span style="font-size: 0.85rem; color: #34d399; font-weight: 700;">✅ Response Completed</span>`;
+        }
+
+        const inj = (inc.injuries || "NONE").toUpperCase();
+        const thr = (inc.threat_state || "ACTIVE").toUpperCase();
+        const isCriticalPriority = inc.is_lethal_priority === 1 || inj === "CONFIRMED";
+
+        const matrix = inc.credibility_matrix || null;
+        const vectors = matrix ? (matrix.vectors || {}) : {};
+        const gt = matrix ? (matrix.ground_truth || {}) : {};
+        const eii = matrix ? Math.round((matrix.evidence_integrity_index || 0.5) * 100) : inc.confidence_score;
+
+        const card = document.createElement("div");
+        card.className = `dispatch-card ${isUrgent ? 'urgent' : ''}`;
+        card.innerHTML = `
+          <div>
+            ${isCriticalPriority ? `
+              <div style="background: rgba(255, 77, 109, 0.25); border: 1px solid var(--bugle-red); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.74rem; font-weight: 800; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.4rem; box-shadow: 0 0 10px rgba(255, 77, 109, 0.4);">
+                🚨 PRIORITY 1: LETHAL HAZARD / MASS CASUALTIES
+              </div>
+            ` : ''}
+
+            <div class="dispatch-card-top">
+              <span class="status-badge-dispatch status-${status.toLowerCase()}">${status.replace('_', ' ')}</span>
+              <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                ${inc.is_lethal_priority ? `<span style="font-size: 0.7rem; font-weight: 800; padding: 2px 7px; border-radius: 3px; background: rgba(255, 77, 109, 0.35); color: #fff; border: 1px solid var(--bugle-red); box-shadow: 0 0 8px rgba(255, 77, 109, 0.6);">⚠️ HAZMAT PRIORITY</span>` : ''}
+                ${inc.is_regional_cluster ? `<span style="font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: rgba(167, 139, 250, 0.25); color: var(--bugle-purple); border: 1px solid var(--bugle-purple);">📡 ACOUSTIC CLUSTER</span>` : ''}
+                ${inc.dispute_count > 0 ? `<span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(255, 77, 109, 0.2); color: var(--bugle-red); font-weight: 800;">🚩 ${inc.dispute_count} DISPUTED</span>` : ''}
+                <span style="font-size: 0.82rem; font-weight: 800; color: ${isUrgent ? 'var(--bugle-red)' : 'var(--bugle-yellow)'}">
+                  TRUST: ${inc.confidence_score}%
+                </span>
+              </div>
+            </div>
+            <div class="dispatch-card-title">${inc.title}</div>
+            <div class="dispatch-card-summary">${inc.summary}</div>
+
+            <div style="display: flex; gap: 0.4rem; margin-bottom: 0.85rem; flex-wrap: wrap;">
+              <span style="font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: ${inj === 'CONFIRMED' ? 'rgba(255, 77, 109, 0.25)' : 'rgba(37, 42, 51, 0.6)'}; color: ${inj === 'CONFIRMED' ? 'var(--bugle-red)' : 'var(--text-muted)'};">
+                CASUALTIES: ${inj}
+              </span>
+              <span style="font-size: 0.7rem; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: ${thr === 'ACTIVE' ? 'rgba(255, 212, 59, 0.15)' : 'rgba(57, 255, 136, 0.15)'}; color: ${thr === 'ACTIVE' ? 'var(--bugle-yellow)' : 'var(--bugle-green)'};">
+                THREAT: ${thr}
+              </span>
+            </div>
+            
+            <div class="dispatch-meta-row">
+              <span class="dispatch-meta-item">📍 <strong>${inc.latitude.toFixed(4)}, ${inc.longitude.toFixed(4)}</strong></span>
+              <span class="dispatch-meta-item">📂 <strong>${inc.category}</strong></span>
+              <span class="dispatch-meta-item">👥 <strong>${inc.report_count} Reports (${inc.source_diversity} sources)</strong></span>
+            </div>
+
+            <!-- Forensic Audit Details Drawer (4-Vector Credibility Matrix) -->
+            <div id="forensic-drawer-${inc.id}" style="display: none; margin-top: 0.85rem; padding: 0.85rem; background: var(--bg-primary); border: 1px dashed rgba(167, 139, 250, 0.4); border-radius: var(--radius-sm); font-size: 0.76rem; color: var(--text-main);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem;">
+                <span style="font-weight: 800; color: var(--bugle-purple); text-transform: uppercase; letter-spacing: 0.5px;">🔬 Evidence Integrity Matrix & Telemetry</span>
+                <span style="font-weight: 800; color: ${eii >= 70 ? 'var(--bugle-green)' : (eii >= 40 ? 'var(--bugle-blue)' : 'var(--bugle-red)')}; font-size: 0.76rem;">EII: ${eii}/100</span>
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 0.4rem 0.55rem; border-radius: 4px;">
+                  🌐 <strong>Source Independence:</strong>
+                  <div style="color: ${vectors.source_independence?.grade === 'COMPROMISED' ? 'var(--bugle-red)' : 'var(--bugle-blue)'}; font-size: 0.72rem;">
+                    ${vectors.source_independence ? `${Math.round(vectors.source_independence.score * 100)}% (${vectors.source_independence.grade})` : `${inc.source_diversity} subnets`}
+                  </div>
+                </div>
+                <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 0.4rem 0.55rem; border-radius: 4px;">
+                  📍 <strong>Geospatial Grounding:</strong>
+                  <div style="color: ${vectors.geospatial_grounding?.grade === 'COMPROMISED' ? 'var(--bugle-red)' : 'var(--bugle-blue)'}; font-size: 0.72rem;">
+                    ${vectors.geospatial_grounding ? `${Math.round(vectors.geospatial_grounding.score * 100)}% (${vectors.geospatial_grounding.risk})` : 'Natural spread'}
+                  </div>
+                </div>
+                <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 0.4rem 0.55rem; border-radius: 4px;">
+                  📷 <strong>Forensic Provenance:</strong>
+                  <div style="color: ${vectors.evidence_provenance?.grade === 'COMPROMISED' ? 'var(--bugle-red)' : 'var(--bugle-blue)'}; font-size: 0.72rem;">
+                    ${vectors.evidence_provenance ? `${Math.round(vectors.evidence_provenance.score * 100)}% (${vectors.evidence_provenance.risk})` : 'Sensor Audit'}
+                  </div>
+                </div>
+                <div style="background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 0.4rem 0.55rem; border-radius: 4px;">
+                  ⚖️ <strong>Field Consensus:</strong>
+                  <div style="color: ${vectors.field_consensus?.grade === 'COMPROMISED' ? 'var(--bugle-red)' : 'var(--bugle-blue)'}; font-size: 0.72rem;">
+                    ${vectors.field_consensus ? `${Math.round(vectors.field_consensus.score * 100)}% (${vectors.field_consensus.risk})` : 'Quorum Protected'}
+                  </div>
+                </div>
+              </div>
+              <div class="reality-attest-box" style="background: rgba(0,0,0,0.3); padding: 0.4rem 0.55rem; border-radius: 4px; border-left: 3px solid ${gt.is_verified_physical ? 'var(--bugle-green)' : 'var(--bugle-yellow)'}; font-size: 0.72rem;">
+                <strong>Reality Attestation:</strong> ${gt.reality_badge || (gt.is_verified_physical ? 'CONFIRMED ON-SCENE' : 'ALGORITHMIC CORROBORATION')}
+              </div>
+            </div>
+          </div>
+
+          <div class="dispatch-controls">
+            <div class="agency-selector-row">
+              <label style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Agency:</label>
+              <select id="agency-select-${inc.id}" class="agency-select-input" onchange="updateAgencySelect(${inc.id})">
+                <option value="POLICE" ${agency === 'POLICE' ? 'selected' : ''}>🚨 Police (112)</option>
+                <option value="FIRE" ${agency === 'FIRE' ? 'selected' : ''}>🔥 Fire Dept (101)</option>
+                <option value="AMBULANCE" ${agency === 'AMBULANCE' ? 'selected' : ''}>🚑 Ambulance (108)</option>
+                <option value="CIVIC" ${agency === 'CIVIC' ? 'selected' : ''}>⚠️ Municipal / NDRF</option>
+              </select>
+              <button type="button" class="btn-sitrep-link" onclick="toggleForensicDrawer(${inc.id})" style="background: var(--bg-surface); border: 1px solid var(--border-subtle); color: var(--text-muted); cursor: pointer; padding: 0.35rem 0.65rem; border-radius: 4px; font-size: 0.75rem; font-weight: 700;">
+                🔬 Forensics
+              </button>
+              <a href="/incident/${inc.id}/bulletin" target="_blank" class="btn-sitrep-link" title="Print Official SITREP Bulletin">
+                📄 SITREP
+              </a>
+            </div>
+            ${nextActionBtn}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function toggleForensicDrawer(incidentId) {
+      const drawer = document.getElementById(`forensic-drawer-${incidentId}`);
+      if (drawer) {
+        drawer.style.display = drawer.style.display === "none" ? "block" : "none";
+      }
+    }
+
+    function inferDefaultAgency(category) {
+      const c = (category || "").toLowerCase();
+      if (c.includes("fire") || c.includes("explosion") || c.includes("hazard")) return "FIRE";
+      if (c.includes("assault") || c.includes("crime") || c.includes("disturbance")) return "POLICE";
+      return "AMBULANCE";
+    }
+
+    function updateAgencySelect(incidentId) {
+      const select = document.getElementById(`agency-select-${incidentId}`);
+      if (!select) return;
+      const agency = select.value;
+      const inc = allIncidents.find(i => i.id === incidentId);
+      if (inc) {
+        advanceDispatch(incidentId, agency, inc.dispatch_status || "PENDING");
+      }
+    }
+
+    async function advanceDispatch(incidentId, agency, nextStatus) {
+      try {
+        const formData = new FormData();
+        formData.append("agency", agency);
+        formData.append("status", nextStatus);
+        formData.append("notes", `Dispatched via Emergency Command Console at ${new Date().toLocaleTimeString()}`);
+
+        const res = await fetch(`/api/incidents/${incidentId}/dispatch`, {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+          loadDispatchQueue();
+        } else {
+          alert("Dispatch status update failed.");
+        }
+      } catch (err) {
+        console.error("Dispatch update error:", err);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", syncSession);
+  </script>
+</body>
+</html>

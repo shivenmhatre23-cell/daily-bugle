@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Press Clearance & Sign In | The Daily Bugle</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/login.css" />
+
+  <!-- Theme Pre-render Script (Zero FOUC) -->
+  <script src="/static/js/theme.js"></script>
+
+  <!-- Supabase Official JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    .btn-google-auth {
+      background-color: #ffffff;
+      color: #1f2937;
+      font-weight: 700;
+      font-size: 0.95rem;
+      border: 1px solid #d1d5db;
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1.25rem;
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
+      transition: background-color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+    }
+    .btn-google-auth:hover {
+      background-color: #f9fafb;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    }
+    .btn-google-auth svg {
+      width: 20px;
+      height: 20px;
+    }
+    .auth-subtabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.35rem;
+      background-color: var(--bg-surface);
+      padding: 0.25rem;
+      border-radius: var(--radius-sm);
+      margin-bottom: 1.25rem;
+      border: 1px solid var(--border-subtle);
+    }
+    .auth-subtab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.82rem;
+      padding: 0.55rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    .auth-subtab-btn.active {
+      background-color: var(--bugle-red);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(225, 29, 72, 0.3);
+    }
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      margin: 1.5rem 0;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+    .auth-divider::before,
+    .auth-divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .auth-divider span {
+      padding: 0 0.85rem;
+    }
+    .btn-primary-action {
+      background-color: #3ecf8e;
+      color: #0f172a;
+      font-weight: 800;
+      font-size: 0.9rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 0.8rem 1rem;
+      cursor: pointer;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      transition: opacity var(--transition-fast), transform var(--transition-fast);
+    }
+    .btn-primary-action:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+    .sb-status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-top: 1.5rem;
+      justify-content: center;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+    .sb-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #3ecf8e;
+      box-shadow: 0 0 8px rgba(62, 207, 142, 0.6);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Masthead Navigation -->
+  <header class="bugle-masthead">
+    <div class="brand-wrapper">
+      <a href="/" class="brand-title">The Daily Bugle</a>
+      <span class="brand-subtitle">Press Bureau & Access Clearance</span>
+    </div>
+    <div class="nav-cluster">
+      <nav class="main-nav">
+        <a href="/">The Wire</a>
+        <a href="/login" class="active">Sign In</a>
+      </nav>
+
+      <!-- Theme Switcher Toggle -->
+      <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+        <span class="theme-icon">☀️</span>
+        <span class="theme-label">Light</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-header">
+        <h1>Newsroom Terminal</h1>
+        <p id="auth-subtitle">Verify your identity with Google or Email to transmit scoops or access triage operations.</p>
+      </div>
+
+      <!-- Feedback Alert Box -->
+      <div id="auth-alert" class="auth-alert"></div>
+
+      <!-- One-Click Google Authentication Button (Primary) -->
+      <button type="button" id="btn-google-login" class="btn-google-auth" onclick="handleGoogleAuth()">
+        <svg viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.8-2.4 3.66v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.15z"/>
+          <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.27 21.39 7.33 24 12 24z"/>
+          <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.94 0 12s.46 3.84 1.26 5.42l4.02-3.15z"/>
+          <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.27 2.61 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+        </svg>
+        Sign In with Google
+      </button>
+
+      <div class="auth-divider">
+        <span>or use email clearance</span>
+      </div>
+
+      <!-- Sign In vs Create Account Sub-tabs -->
+      <div class="auth-subtabs">
+        <button id="subtab-signin" class="auth-subtab-btn active" onclick="setAuthTab('signin')">Sign In</button>
+        <button id="subtab-signup" class="auth-subtab-btn" onclick="setAuthTab('signup')">Create Account</button>
+      </div>
+
+      <!-- Supabase Credentials Form -->
+      <form id="supabase-auth-form" onsubmit="handleFormSubmit(event)">
+        
+        <!-- Name field: Visible only during Create Account -->
+        <div class="auth-form-group" id="field-name-group" style="display: none;">
+          <label for="sb-name">Full Name / Reporter Byline</label>
+          <input type="text" id="sb-name" placeholder="e.g. Peter Parker" />
+        </div>
+
+        <div class="auth-form-group">
+          <label for="sb-email">Email Address</label>
+          <input type="email" id="sb-email" required placeholder="e.g. reporter@dailybugle.com" />
+        </div>
+
+        <div class="auth-form-group">
+          <label for="sb-password">Password</label>
+          <input type="password" id="sb-password" required placeholder="Minimum 6 characters" />
+        </div>
+
+        <button type="submit" id="btn-sb-main" class="btn-primary-action">
+          Sign In with Email
+        </button>
+      </form>
+
+      <div class="sb-status-indicator">
+        <span class="sb-dot" id="sb-dot-status"></span>
+        <span id="sb-connection-label">Daily Bugle Trust Network Active</span>
+      </div>
+    </div>
+  </main>
+
+  <footer class="bugle-footer">
+    <p>&copy; 2026 The Daily Bugle Intelligence Desk. Transforming civic noise into explainable truth.</p>
+  </footer>
+
+  <script>
+    let activeAuthTab = "signin"; // 'signin' or 'signup'
+    let sbClient = null;
+
+    function showAlert(text, type = "error") {
+      const box = document.getElementById("auth-alert");
+      box.className = `auth-alert ${type}`;
+      box.textContent = text;
+      box.style.display = "block";
+    }
+
+    function setAuthTab(tab) {
+      activeAuthTab = tab;
+      document.getElementById("auth-alert").style.display = "none";
+
+      const tabSignIn = document.getElementById("subtab-signin");
+      const tabSignUp = document.getElementById("subtab-signup");
+      const nameGroup = document.getElementById("field-name-group");
+      const mainBtn = document.getElementById("btn-sb-main");
+
+      if (tab === "signin") {
+        tabSignIn.classList.add("active");
+        tabSignUp.classList.remove("active");
+        nameGroup.style.display = "none";
+        mainBtn.textContent = "Sign In with Email";
+      } else {
+        tabSignUp.classList.add("active");
+        tabSignIn.classList.remove("active");
+        nameGroup.style.display = "block";
+        mainBtn.textContent = "Create Reporter Pass & Enter";
+      }
+    }
+
+    async function handleFormSubmit(e) {
+      e.preventDefault();
+      if (activeAuthTab === "signup") {
+        await executeSignUp();
+      } else {
+        await executeSignIn();
+      }
+    }
+
+    // --- Supabase Cloud SDK Initialization ---
+    async function initSupabase() {
+      try {
+        const res = await fetch("/api/config/supabase");
+        const cfg = await res.json();
+        if (cfg.url && cfg.publishable_key && window.supabase) {
+          sbClient = window.supabase.createClient(cfg.url, cfg.publishable_key);
+          console.log("[Supabase] Browser client initialized successfully.");
+
+          // Check if user is returning from a Google OAuth redirect
+          const { data: { session } } = await sbClient.auth.getSession();
+          if (session) {
+            await syncWithBugleBackend(session);
+          }
+
+          // Listen for active OAuth state changes
+          sbClient.auth.onAuthStateChange(async (event, session) => {
+            if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED")) {
+              await syncWithBugleBackend(session);
+            }
+          });
+        } else {
+          const dot = document.getElementById("sb-dot-status");
+          if (dot) {
+            dot.style.backgroundColor = "#e11d48";
+            dot.style.boxShadow = "none";
+          }
+          const label = document.getElementById("sb-connection-label");
+          if (label) label.textContent = "Supabase connection unavailable";
+        }
+      } catch (err) {
+        console.warn("[Supabase] Init error:", err);
+      }
+    }
+
+    async function syncWithBugleBackend(session) {
+      showAlert("Clearance verified! Synchronizing credentials with Newsroom...", "success");
+      try {
+        const res = await fetch("/api/auth/supabase-sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            access_token: session.access_token,
+            user: session.user
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          showAlert("Clearance Granted! Redirecting to newsroom...", "success");
+          const urlParams = new URLSearchParams(window.location.search);
+          const nextUrl = urlParams.get("redirect") || (data.user && data.user.role === "EDITOR" ? "/desk" : "/");
+          setTimeout(() => {
+            window.location.href = nextUrl;
+          }, 600);
+        } else {
+          showAlert(data.error || "Failed to synchronize clearance with newsroom.");
+        }
+      } catch (err) {
+        showAlert("Network error during session synchronization.");
+      }
+    }
+
+    async function handleGoogleAuth() {
+      if (!sbClient) {
+        showAlert("Supabase cloud client is initializing or unavailable. Please wait a moment.");
+        return;
+      }
+      const googleBtn = document.getElementById("btn-google-login");
+      googleBtn.disabled = true;
+      googleBtn.style.opacity = "0.7";
+      showAlert("Redirecting to Google Authentication...", "success");
+
+      try {
+        const { data, error } = await sbClient.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: window.location.origin + "/login"
+          }
+        });
+        if (error) {
+          showAlert("Google OAuth error: " + error.message);
+          googleBtn.disabled = false;
+          googleBtn.style.opacity = "1";
+        }
+      } catch (err) {
+        showAlert("Google Auth request error: " + err.message);
+        googleBtn.disabled = false;
+        googleBtn.style.opacity = "1";
+      }
+    }
+
+    // --- Sign In Handler ---
+    async function executeSignIn() {
+      const email = document.getElementById("sb-email").value.trim();
+      const password = document.getElementById("sb-password").value.trim();
+      const submitBtn = document.getElementById("btn-sb-main");
+
+      if (!email || !password) {
+        showAlert("Please enter both email and password.");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Authenticating...";
+      showAlert("Verifying credentials with Supabase...", "success");
+
+      try {
+        if (!sbClient) {
+          throw new Error("Supabase client is offline.");
+        }
+
+        const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+        if (error) {
+          showAlert(error.message);
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Sign In with Email";
+          return;
+        }
+
+        if (data.session) {
+          await syncWithBugleBackend(data.session);
+        }
+      } catch (err) {
+        showAlert(err.message || "Sign in failed.");
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Sign In with Email";
+      }
+    }
+
+    // --- Robust Sign Up Handler (Bypasses email rate limits and auto-confirms) ---
+    async function executeSignUp() {
+      const name = document.getElementById("sb-name").value.trim();
+      const email = document.getElementById("sb-email").value.trim();
+      const password = document.getElementById("sb-password").value.trim();
+      const submitBtn = document.getElementById("btn-sb-main");
+
+      if (!email || !email.includes("@")) {
+        showAlert("Please enter a valid email address.");
+        return;
+      }
+      if (!password || password.length < 6) {
+        showAlert("Password must be at least 6 characters long.");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Creating Account...";
+      showAlert("Creating verified pass in Supabase...", "success");
+
+      try {
+        const response = await fetch("/api/auth/supabase-signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          showAlert(data.error || "Failed to create account.");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Create Reporter Pass & Enter";
+          return;
+        }
+
+        showAlert("Account created & verified! Redirecting...", "success");
+        const urlParams = new URLSearchParams(window.location.search);
+        const nextUrl = urlParams.get("redirect") || "/";
+        setTimeout(() => {
+          window.location.href = nextUrl;
+        }, 600);
+
+      } catch (err) {
+        showAlert("Network error creating account: " + err.message);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Create Reporter Pass & Enter";
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", initSupabase);
+  </script>
+</body>
+</html>

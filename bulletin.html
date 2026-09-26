@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Advisory SITREP | The Daily Bugle</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="/static/css/base.css" />
+  
+  <style>
+    body {
+      background: #0f172a;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      padding: 2rem;
+    }
+
+    .no-print-bar {
+      max-width: 900px;
+      margin: 0 auto 1.5rem auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .btn-print {
+      background: var(--bugle-red);
+      color: #fff;
+      border: none;
+      padding: 0.6rem 1.25rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-back {
+      color: #94a3b8;
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .bulletin-paper {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #ffffff;
+      color: #0f172a;
+      padding: 3rem;
+      border-radius: 4px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      border-top: 8px solid #be123c;
+    }
+
+    .bulletin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .brand-group h1 {
+      font-family: Georgia, serif;
+      font-size: 2rem;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin: 0;
+      text-transform: uppercase;
+      color: #0f172a;
+    }
+
+    .brand-group .sub {
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #be123c;
+      font-weight: 800;
+    }
+
+    .doc-meta {
+      text-align: right;
+      font-size: 0.8rem;
+      color: #475569;
+    }
+
+    .doc-meta strong {
+      color: #0f172a;
+    }
+
+    .threat-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      padding: 0.75rem 1.25rem;
+      border-radius: 4px;
+      margin-bottom: 1.5rem;
+    }
+
+    .threat-tag {
+      background: #be123c;
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 3px;
+    }
+
+    .threat-score {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: #0f172a;
+    }
+
+    .section-title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #475569;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 0.4rem;
+      margin: 1.5rem 0 0.85rem 0;
+    }
+
+    .sitrep-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .field-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 0.75rem 1rem;
+      border-radius: 4px;
+    }
+
+    .field-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: #64748b;
+      margin-bottom: 0.25rem;
+    }
+
+    .field-value {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .incident-narrative {
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #1e293b;
+      margin-bottom: 1.5rem;
+    }
+
+    .table-brief {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .table-brief th {
+      background: #f1f5f9;
+      text-align: left;
+      padding: 0.6rem 0.85rem;
+      border-bottom: 2px solid #cbd5e1;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .table-brief td {
+      padding: 0.6rem 0.85rem;
+      border-bottom: 1px solid #e2e8f0;
+      color: #1e293b;
+    }
+
+    .witness-log-entry {
+      border-left: 3px solid #be123c;
+      padding-left: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .witness-header {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .witness-quote {
+      font-size: 0.9rem;
+      font-style: italic;
+      color: #0f172a;
+      margin-top: 0.25rem;
+    }
+
+    .official-signoff {
+      margin-top: 2.5rem;
+      border-top: 1px solid #cbd5e1;
+      padding-top: 1.25rem;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+      .no-print-bar {
+        display: none !important;
+      }
+      .bulletin-paper {
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Action Toolbar -->
+  <div class="no-print-bar">
+    <a href="/dispatch" class="btn-back">&larr; Return to Dispatch Console</a>
+    <button class="btn-print" onclick="window.print()">
+      🖨️ Print / Save Official SITREP (PDF)
+    </button>
+  </div>
+
+  <!-- Printable Intelligence Bulletin Paper -->
+  <div class="bulletin-paper">
+    
+    <div class="bulletin-header">
+      <div class="brand-group">
+        <h1>The Daily Bugle</h1>
+        <div class="sub">Authority Intelligence Service &bull; SITREP Dispatch</div>
+      </div>
+      <div class="doc-meta">
+        <div><strong>BULLETIN REF:</strong> #DBG-SITREP-<span id="doc-id">...</span></div>
+        <div><strong>DATE / TIME:</strong> <span id="doc-date">...</span></div>
+        <div><strong>SECURITY LEVEL:</strong> SENSITIVE / LAW ENFORCEMENT</div>
+      </div>
+    </div>
+
+    <div class="threat-banner">
+      <div style="display: flex; align-items: center; gap: 0.85rem;">
+        <span class="threat-tag" id="threat-tag">CRITICAL INCIDENT</span>
+        <strong id="incident-category">...</strong>
+      </div>
+      <div class="threat-score">
+        TRUST CONFIDENCE: <span id="threat-score-val" style="color: #be123c;">...</span>/100
+      </div>
+    </div>
+
+    <h2 id="incident-title" style="font-size: 1.6rem; color: #0f172a; margin-bottom: 0.5rem; font-family: Georgia, serif;">...</h2>
+    <p id="incident-summary" class="incident-narrative" style="font-weight: 500; color: #334155;">...</p>
+
+    <div class="section-title">Operational Coordinates & Geographic Context</div>
+    <div class="sitrep-grid">
+      <div class="field-box">
+        <div class="field-label">Geographic Coordinates (WGS-84)</div>
+        <div class="field-value" id="coords-val">...</div>
+      </div>
+      <div class="field-box">
+        <div class="field-label">Corroboration Ratio</div>
+        <div class="field-value" id="corroboration-val">...</div>
+      </div>
+      <div class="field-box">
+        <div class="field-label">Assigned Emergency Agency</div>
+        <div class="field-value" id="agency-val" style="color: #be123c;">...</div>
+      </div>
+      <div class="field-box">
+        <div class="field-label">Dispatch Status</div>
+        <div class="field-value" id="dispatch-val">...</div>
+      </div>
+    </div>
+
+    <div class="section-title">Verified Intelligence Narrative</div>
+    <div class="incident-narrative" id="incident-full-article">...</div>
+
+    <div class="section-title">Multi-Factor Algorithmic Explainability Audit</div>
+    <table class="table-brief">
+      <thead>
+        <tr>
+          <th>Verification Factor</th>
+          <th style="text-align: right;">Confidence Impact</th>
+        </tr>
+      </thead>
+      <tbody id="explainability-table">
+        <!-- Populated via script -->
+      </tbody>
+    </table>
+
+    <div class="section-title">Corroborating Eyewitness Logs & Evidence</div>
+    <div id="witness-timeline">
+      <!-- Populated via script -->
+    </div>
+
+    <div class="official-signoff">
+      <div>DISPATCHED BY: Daily Bugle Automated Trust Cascade & Human-in-the-Loop Editorial Desk</div>
+      <div>CLASSIFICATION: OFFICIAL SITREP &bull; ACTIONABLE INTELLIGENCE</div>
+    </div>
+
+  </div>
+
+  <script>
+    async function loadBulletin() {
+      const parts = window.location.pathname.split("/");
+      const incidentId = parts[2]; // /incident/{id}/bulletin
+
+      try {
+        const res = await fetch(`/api/incidents/${incidentId}`);
+        if (!res.ok) {
+          alert("Incident record not found.");
+          return;
+        }
+        const inc = await res.json();
+
+        document.getElementById("doc-id").textContent = inc.id;
+        document.getElementById("doc-date").textContent = new Date(inc.updated_at || inc.created_at).toLocaleString();
+        document.getElementById("incident-category").textContent = inc.category.toUpperCase();
+        document.getElementById("threat-score-val").textContent = inc.confidence_score;
+        document.getElementById("incident-title").textContent = inc.title;
+        document.getElementById("incident-summary").textContent = inc.summary;
+        document.getElementById("coords-val").textContent = `${inc.latitude.toFixed(6)}° N, ${inc.longitude.toFixed(6)}° E`;
+        document.getElementById("corroboration-val").textContent = `${inc.report_count} reports across ${inc.source_diversity} independent sources`;
+        document.getElementById("agency-val").textContent = (inc.dispatched_agency || "PENDING TRIAGE").toUpperCase();
+        document.getElementById("dispatch-val").textContent = (inc.dispatch_status || "PENDING").replace("_", " ");
+        document.getElementById("incident-full-article").textContent = inc.full_article || inc.summary;
+
+        // Populate explainability table
+        const tbody = document.getElementById("explainability-table");
+        tbody.innerHTML = "";
+        let reasons = [];
+        try {
+          reasons = JSON.parse(inc.explainability_json);
+        } catch (e) {
+          reasons = [];
+        }
+
+        reasons.forEach(r => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><strong>${r.label}</strong></td>
+            <td style="text-align: right; font-weight: 700; color: ${r.value.startsWith('+') ? '#059669' : '#dc2626'};">${r.value}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Eyewitness timeline
+        const timeline = document.getElementById("witness-timeline");
+        timeline.innerHTML = "";
+        if (inc.reports && inc.reports.length > 0) {
+          inc.reports.forEach(r => {
+            const div = document.createElement("div");
+            div.className = "witness-log-entry";
+            div.innerHTML = `
+              <div class="witness-header">
+                ${r.reporter_name || 'Verified Informant'} &bull; ${new Date(r.created_at).toLocaleTimeString()} &bull; Trust Clearance: ${Math.round((r.reporter_trust || 0.5) * 100)}%
+              </div>
+              <div class="witness-quote">"${r.description}"</div>
+            `;
+            timeline.appendChild(div);
+          });
+        } else {
+          timeline.innerHTML = `<div style="font-size: 0.85rem; color: #64748b;">No independent eyewitness logs attached to this record.</div>`;
+        }
+
+      } catch (err) {
+        console.error("Failed to load SITREP data:", err);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadBulletin);
+  </script>
+</body>
+</html>
